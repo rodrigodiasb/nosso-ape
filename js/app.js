@@ -24,6 +24,7 @@ import {
   reverseExpense,
   reversePayment,
   reverseReserveContribution,
+  resetFinancialData,
   updateProject
 } from "./data.js";
 
@@ -859,7 +860,20 @@ $("#joinProjectForm").addEventListener('submit',async e=>{e.preventDefault();con
 
 // --- Project settings ---
 function renderProjectMembers(){const list=$("#membersList");$("#membersSummary").textContent=`${currentMembers.length} ${currentMembers.length===1?'pessoa vinculada':'pessoas vinculadas'}`;list.innerHTML=currentMembers.map((m,i)=>{const n=m.displayName||m.email?.split('@')[0]||'Membro';return `<div class="member-row"><div class="mini-avatar ${i%2===0?'blue':'rose'}">${escapeHtml(n.charAt(0).toUpperCase())}</div><div><strong>${escapeHtml(n)}</strong><span>${escapeHtml(m.email||'')}</span></div><small>${m.role==='owner'?'Criador do projeto':'Membro'}</small></div>`;}).join('');}
-$("#projectSettingsButton").addEventListener('click',()=>{$("#settingsProjectName").value=currentProject.name||'';$("#settingsPropertyValue").value=Number(currentProject.propertyValue)||'';$("#settingsPurchaseDate").value=currentProject.purchaseDate||'';renderProjectMembers();closeModal($("#moreModal"));openModal($("#projectModal"));});
+$("#projectSettingsButton").addEventListener('click',()=>{
+  $("#settingsProjectName").value=currentProject.name||'';
+  $("#settingsPropertyValue").value=Number(currentProject.propertyValue)||'';
+  $("#settingsPurchaseDate").value=currentProject.purchaseDate||'';
+  renderProjectMembers();
+
+  const resetZone = $("#financialResetZone");
+  if (resetZone) {
+    resetZone.classList.toggle("hidden", currentUser?.uid !== currentProject?.ownerUid);
+  }
+
+  closeModal($("#moreModal"));
+  openModal($("#projectModal"));
+});
 $("#projectSettingsForm").addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;setButtonLoading(b,true,'Salvar alterações');try{currentProject=await updateProject(currentProject.id,{name:$("#settingsProjectName").value.trim(),propertyValue:Number($("#settingsPropertyValue").value)||0,purchaseDate:$("#settingsPurchaseDate").value||null});renderProject();showToast('Dados do projeto atualizados.','success');}catch{showToast('Não foi possível atualizar o projeto.','error');}finally{setButtonLoading(b,false,'Salvar alterações');}});
 $("#newInviteForm").addEventListener('submit',async e=>{e.preventDefault();const b=e.submitter;setButtonLoading(b,true,'Gerar código de convite','Gerando...');try{const code=await createInvite(currentProject.id,$("#newInviteEmail").value,currentUser.uid);$("#createdInviteCode").textContent=code;closeModal($("#projectModal"));openModal($("#inviteSuccessModal"));}catch{showToast('Não foi possível gerar o convite.','error');}finally{setButtonLoading(b,false,'Gerar código de convite');}});
 $("#copyInviteButton").addEventListener('click',async()=>{const code=$("#createdInviteCode").textContent.trim();try{await navigator.clipboard.writeText(code);showToast('Código copiado.','success');}catch{showToast(`Código: ${code}`);}});$("#continueAfterInvite").addEventListener('click',()=>closeModal($("#inviteSuccessModal")));
@@ -918,3 +932,77 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')$$('.modal-layer').f
 
 async function boot(){try{await configureAuthPersistence();}catch(err){console.warn(err);}observeAuth(async user=>{currentUser=user;if(!user){currentProject=null;currentMembers=[];financial=emptyFinancial();showLogin();return;}renderIdentity(user);await loadUserWorkspace(user);});if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(console.warn));}
 boot();
+
+
+// ===== v0.6.1 • Reset financeiro =====
+
+const financialResetModal = $("#financialResetModal");
+const financialResetConfirmation = $("#financialResetConfirmation");
+const confirmFinancialResetButton = $("#confirmFinancialResetButton");
+
+$("#openFinancialResetButton")?.addEventListener("click", () => {
+  if (!currentProject || !currentUser) return;
+
+  if (currentUser.uid !== currentProject.ownerUid) {
+    showToast("Somente o proprietário do projeto pode executar o reset.", "error");
+    return;
+  }
+
+  financialResetConfirmation.value = "";
+  confirmFinancialResetButton.disabled = true;
+  closeModal($("#projectModal"));
+  openModal(financialResetModal);
+});
+
+financialResetConfirmation?.addEventListener("input", () => {
+  confirmFinancialResetButton.disabled =
+    financialResetConfirmation.value.trim().toUpperCase() !== "RESETAR";
+});
+
+$("#cancelFinancialResetButton")?.addEventListener("click", () => {
+  closeModal(financialResetModal);
+});
+
+confirmFinancialResetButton?.addEventListener("click", async () => {
+  if (!currentProject || !currentUser) return;
+
+  if (currentUser.uid !== currentProject.ownerUid) {
+    showToast("Somente o proprietário do projeto pode executar o reset.", "error");
+    return;
+  }
+
+  if (financialResetConfirmation.value.trim().toUpperCase() !== "RESETAR") {
+    showToast("Digite RESETAR para confirmar.", "error");
+    return;
+  }
+
+  const originalText = confirmFinancialResetButton.textContent;
+  confirmFinancialResetButton.disabled = true;
+  confirmFinancialResetButton.textContent = "Apagando...";
+
+  try {
+    if ($("#backupBeforeReset")?.checked) {
+      exportJsonBackup();
+      await new Promise(resolve => setTimeout(resolve, 450));
+    }
+
+    const summary = await resetFinancialData(currentProject.id);
+
+    financial = emptyFinancial();
+    closeModal(financialResetModal);
+
+    await refreshFinancial();
+
+    showToast(
+      `Reset concluído: ${summary.contracts} contrato(s), ${summary.payments} pagamento(s) e ${summary.expenses} despesa(s) removidos.`,
+      "success"
+    );
+  } catch (error) {
+    console.error("Falha ao resetar dados financeiros:", error);
+    showToast("Não foi possível concluir o reset. Nenhum dado do imóvel foi alterado.", "error");
+  } finally {
+    confirmFinancialResetButton.textContent = originalText;
+    financialResetConfirmation.value = "";
+    confirmFinancialResetButton.disabled = true;
+  }
+});

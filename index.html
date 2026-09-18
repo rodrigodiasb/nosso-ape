@@ -648,6 +648,56 @@
     </div>
   </div>
 
+
+  <!-- RESET FINANCEIRO -->
+  <div id="financialResetModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="financialResetTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet danger-sheet">
+      <div class="sheet-handle"></div>
+
+      <div class="danger-orb">!</div>
+      <h3 id="financialResetTitle" class="center-title">Resetar dados financeiros?</h3>
+
+      <p class="center-copy">
+        Esta ação apaga definitivamente todos os lançamentos financeiros do projeto, mas preserva:
+        <strong>imóvel, valor contratado, data, usuários e membros.</strong>
+      </p>
+
+      <div class="reset-preserve-card">
+        <div><span>✓</span> Projeto e imóvel</div>
+        <div><span>✓</span> Valor contratado</div>
+        <div><span>✓</span> Data da aquisição</div>
+        <div><span>✓</span> Usuários e vínculo do casal</div>
+      </div>
+
+      <div class="reset-delete-card">
+        <div><span>×</span> Contratos e parcelas</div>
+        <div><span>×</span> Pagamentos e despesas</div>
+        <div><span>×</span> Reservas e aportes</div>
+        <div><span>×</span> Histórico financeiro de teste</div>
+      </div>
+
+      <label class="field reset-confirm-field">
+        <span>Para confirmar, digite <strong>RESETAR</strong></span>
+        <div class="field-box">
+          <input id="financialResetConfirmation" type="text" autocomplete="off" placeholder="RESETAR" />
+        </div>
+      </label>
+
+      <label class="backup-before-reset">
+        <input id="backupBeforeReset" type="checkbox" checked />
+        <span>Gerar backup JSON antes de apagar</span>
+      </label>
+
+      <button id="confirmFinancialResetButton" class="danger-button" type="button" disabled>
+        Apagar dados financeiros
+      </button>
+      <button id="cancelFinancialResetButton" class="secondary-button" type="button">
+        Cancelar
+      </button>
+    </div>
+  </div>
+
   <script type="module" src="./js/app.js"></script>
 </body>
 </html>

@@ -1,57 +1,74 @@
-# Nosso Apê — v0.6
+# Nosso Apê — v0.6.1
 
-Versão focada em **Calendário Financeiro e Fluxo Futuro**.
+Patch de segurança para limpar os dados de teste sem apagar o projeto do imóvel.
 
-## O que entrou
+## O que o reset preserva
 
-- Card de Agenda Financeira no dashboard.
-- Total e quantidade de compromissos vencidos.
-- Visões de próximos 7, 30, 60 e 90 dias.
-- Calendário mensal navegável.
-- Destaque visual de hoje, vencimentos e atrasados.
-- Toque em um vencimento abre diretamente a tela de pagamento.
-- Seleção de um dia mostra todos os compromissos daquele dia.
-- Projeção visual dos próximos 12 meses.
-- Identificação do mês de maior saída conhecida.
-- Parcelas parcialmente pagas entram somente pelo saldo restante.
-- Financiamentos usam a prestação estimada conhecida; valores não informados ficam como “a confirmar”.
-- Contratos recorrentes com valor mensal estimado entram na projeção sem criar lançamentos falsos no Firestore.
-- Backup JSON atualizado para schemaVersion 0.6.
+- Projeto do imóvel
+- Nome do projeto
+- Valor contratado do imóvel
+- Data da aquisição
+- Usuários
+- Associação dos dois membros
+- Convites existentes
 
-## Importante: não há alteração nas regras do Firestore
+## O que o reset apaga
 
-A v0.6 usa somente os dados que a v0.5 já estava autorizada a ler. Portanto:
+- Contratos
+- Parcelas
+- Pagamentos
+- Despesas
+- Reservas
+- Aportes / movimentações de reservas
+- Registros financeiros estornados ou ativos
 
-**não é necessário publicar novas regras no Firebase nesta versão.**
+## Segurança
 
-O arquivo `firestore.rules` permanece no ZIP apenas como referência e é idêntico ao da v0.5.
+O reset:
+
+1. aparece somente para o proprietário/criador do projeto;
+2. exige digitar `RESETAR`;
+3. oferece backup JSON antes da exclusão;
+4. não altera o documento do imóvel;
+5. não remove usuários ou membros.
 
 ## Atualização
 
-1. Faça um backup JSON pela v0.5 antes da atualização.
-2. Substitua no GitHub todos os arquivos da v0.5 pelos arquivos da v0.6.
-3. Aguarde o GitHub Pages concluir a publicação.
-4. Faça `Ctrl + F5` no computador.
-5. No PWA do celular, feche completamente e abra novamente.
+### 1. Atualize as regras do Firestore primeiro
 
-O cache do Service Worker mudou de `v05` para `v06`.
+Firebase Console → Firestore Database → Regras
 
-## Teste recomendado
+Substitua pelas regras deste pacote e clique em Publicar.
 
-Use um contrato parcelado já existente ou crie um de teste com vencimentos próximos.
+A mudança principal é permitir exclusão das coleções financeiras SOMENTE ao proprietário do projeto.
 
-Valide:
+### 2. Atualize o GitHub Pages
 
-- Agenda Financeira aparece no dashboard.
-- “30 dias” soma apenas os saldos ainda não pagos.
-- Parcela vencida aparece em vermelho.
-- Ao tocar em um dia do calendário, os compromissos daquele dia aparecem abaixo.
-- Ao tocar em um compromisso, a tela de pagamento abre com contrato/parcela selecionados.
-- Após registrar o pagamento e reabrir o calendário, a parcela quitada desaparece da agenda.
-- A projeção de 12 meses se reorganiza automaticamente.
+Substitua os arquivos atuais pelos da v0.6.1.
 
-## Limite intencional da projeção
+O cache foi atualizado para `v061`.
 
-A aplicação não inventa juros futuros, tarifas ou valores ainda desconhecidos. Quando um financiamento não possui prestação estimada conhecida, o compromisso continua visível, mas o valor aparece como `A confirmar`.
+### 3. Para resetar
 
-Contratos recorrentes são projeções gerenciais; eles não criam parcelas no banco. Quando um pagamento desse contrato é registrado em determinado mês, a estimativa daquele mês deixa de aparecer no calendário.
+Entre com a conta que criou o projeto:
+
+Mais → Projeto / imóvel → Resetar dados financeiros
+
+Digite:
+
+`RESETAR`
+
+Mantenha marcada a opção de gerar backup JSON e confirme.
+
+Depois do reset, o dashboard deve manter o valor do imóvel e retornar a zero em:
+
+- custos adicionais;
+- capital empregado;
+- contratos;
+- reservas;
+- movimentações;
+- próximos vencimentos.
+
+## Observação
+
+A conta da segunda pessoa continua normalmente vinculada ao mesmo projeto após o reset.

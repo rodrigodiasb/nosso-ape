@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  deleteDoc,
   getDoc,
   getDocs,
   runTransaction,
@@ -819,4 +820,49 @@ export async function reverseReserveContribution(projectId, transactionId, reaso
     });
     transaction.update(txRef, reversalFields(reason, user));
   });
+}
+
+
+// ===== v0.6.1 • Reset seguro dos dados financeiros =====
+
+async function deleteInChunks(refs, chunkSize = 400) {
+  for (let i = 0; i < refs.length; i += chunkSize) {
+    const batch = writeBatch(db);
+    refs.slice(i, i + chunkSize).forEach(ref => batch.delete(ref));
+    await batch.commit();
+  }
+}
+
+export async function resetFinancialData(projectId) {
+  // Busca tudo antes de excluir para evitar deixar subcoleções órfãs.
+  const contractsSnap = await getDocs(collection(db, "projects", projectId, "contracts"));
+  const paymentsSnap = await getDocs(collection(db, "projects", projectId, "payments"));
+  const expensesSnap = await getDocs(collection(db, "projects", projectId, "expenses"));
+  const reservesSnap = await getDocs(collection(db, "projects", projectId, "reserves"));
+  const reserveTxSnap = await getDocs(collection(db, "projects", projectId, "reserveTransactions"));
+
+  const installmentRefs = [];
+  for (const contractDoc of contractsSnap.docs) {
+    const installmentsSnap = await getDocs(
+      collection(db, "projects", projectId, "contracts", contractDoc.id, "installments")
+    );
+    installmentsSnap.docs.forEach(item => installmentRefs.push(item.ref));
+  }
+
+  // Ordem importante: primeiro subcoleções, depois documentos-pai.
+  await deleteInChunks(installmentRefs);
+  await deleteInChunks(paymentsSnap.docs.map(item => item.ref));
+  await deleteInChunks(expensesSnap.docs.map(item => item.ref));
+  await deleteInChunks(reserveTxSnap.docs.map(item => item.ref));
+  await deleteInChunks(reservesSnap.docs.map(item => item.ref));
+  await deleteInChunks(contractsSnap.docs.map(item => item.ref));
+
+  return {
+    contracts: contractsSnap.size,
+    installments: installmentRefs.length,
+    payments: paymentsSnap.size,
+    expenses: expensesSnap.size,
+    reserves: reservesSnap.size,
+    reserveTransactions: reserveTxSnap.size
+  };
 }

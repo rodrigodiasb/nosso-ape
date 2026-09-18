@@ -42,14 +42,14 @@ service cloud.firestore {
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.type == resource.data.type
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["principalPaid", "financingAdditionalPaid", "status", "updatedAt"]);
-        allow delete: if false;
+        allow delete: if isOwner(projectId);
 
         match /installments/{installmentId} {
           allow read: if isMember(projectId);
           allow create: if isMember(projectId);
           allow update: if isMember(projectId)
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["paidValue", "principalPaid", "additionalPaid", "status", "updatedAt"]);
-          allow delete: if false;
+          allow delete: if isOwner(projectId);
         }
       }
 
@@ -57,14 +57,14 @@ service cloud.firestore {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
         allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if false;
+        allow delete: if isOwner(projectId);
       }
 
       match /expenses/{expenseId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
         allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if false;
+        allow delete: if isOwner(projectId);
       }
 
       match /reserves/{reserveId} {
@@ -73,14 +73,14 @@ service cloud.firestore {
         allow update: if isMember(projectId)
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["currentBalance", "contributedTotal", "usedTotal", "status", "updatedAt"]);
-        allow delete: if false;
+        allow delete: if isOwner(projectId);
       }
 
       match /reserveTransactions/{transactionId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
         allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if false;
+        allow delete: if isOwner(projectId);
       }
     }
 

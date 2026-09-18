@@ -1230,3 +1230,146 @@ svg {
 .calendar-panel{padding:14px;border:1px solid #e5ecee;border-radius:20px;background:white}.calendar-toolbar{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;margin-bottom:12px}.calendar-toolbar>div{text-align:center}.calendar-toolbar span,.calendar-toolbar strong{display:block}.calendar-toolbar span{color:#829099;font-size:.55rem;font-weight:850;letter-spacing:.1em}.calendar-toolbar strong{margin-top:2px;font-size:.92rem}.calendar-arrow{width:37px;height:37px;border:1px solid #dfe8eb;border-radius:12px;background:#f8fafb;color:#4c6975;font-size:1.35rem;cursor:pointer}.calendar-weekdays,.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}.calendar-weekdays{margin-bottom:5px}.calendar-weekdays span{text-align:center;color:#8a989f;font-size:.55rem;font-weight:800}.calendar-day{min-height:55px;padding:5px 3px;border:1px solid transparent;border-radius:11px;background:transparent;color:#334d58;display:flex;flex-direction:column;align-items:center;cursor:pointer;position:relative}.calendar-day:hover{background:#f5f9fa}.calendar-day.outside{opacity:.28}.calendar-day.today{border-color:#98d8c2}.calendar-day.selected{color:white;background:linear-gradient(145deg,#0a8b6d,#19b77c);border-color:transparent;box-shadow:0 7px 16px rgba(10,139,109,.2)}.calendar-day.has-overdue:not(.selected){background:#fff3f3;color:#a44747}.day-number{font-size:.69rem;font-weight:850}.day-dot{width:5px;height:5px;border-radius:50%;background:#1eb57c;margin-top:4px}.has-overdue .day-dot{background:#d35b5b}.calendar-day.selected .day-dot{background:white}.calendar-day small{margin-top:2px;max-width:100%;font-size:.48rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.selected-day-panel,.cashflow-panel{margin-top:16px;padding:16px;border:1px solid #e4ebee;border-radius:20px;background:white}.selected-day-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}.selected-day-heading strong{display:block;margin-top:2px;font-size:.86rem}.selected-day-total{padding:5px 8px;border-radius:999px;background:#edf8f4;color:#08775e;font-size:.62rem;font-weight:850}.selected-day-list{display:grid;gap:7px}
 .cashflow-hero{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}.cashflow-hero>div{padding:12px;border-radius:15px;background:linear-gradient(135deg,#f1faf7,#f3f8fc);border:1px solid #e0ebea}.cashflow-hero span,.cashflow-hero strong,.cashflow-hero small{display:block}.cashflow-hero span{font-size:.6rem;color:#76858d}.cashflow-hero strong{margin-top:4px;font-size:.82rem}.cashflow-hero small{margin-top:3px;color:#819099;font-size:.58rem;line-height:1.3}.cashflow-bars{height:205px;margin-top:14px;display:flex;align-items:stretch;gap:7px;overflow-x:auto;padding:0 1px 3px}.cashflow-month{min-width:56px;border:0;background:transparent;display:grid;grid-template-rows:auto 1fr auto auto;gap:4px;text-align:center;cursor:pointer;color:#52656f}.cashflow-value{font-size:.54rem;font-weight:800;white-space:nowrap}.cashflow-track{height:142px;display:flex;align-items:flex-end;border-radius:10px;background:#edf3f5;overflow:hidden}.cashflow-track i{display:block;width:100%;min-height:0;border-radius:8px 8px 0 0;background:linear-gradient(180deg,#41ce98,#277fd0)}.cashflow-month strong{font-size:.6rem;text-transform:uppercase}.cashflow-month small{font-size:.5rem;color:#8a989f;white-space:nowrap}
 @media(max-width:520px){.calendar-summary-grid{grid-template-columns:1fr 1fr}.agenda-dashboard-grid{grid-template-columns:1fr 1fr}.calendar-day{min-height:51px}.calendar-day small{font-size:.44rem}.cashflow-hero{grid-template-columns:1fr}.agenda-obligation-row{grid-template-columns:auto 1fr}.agenda-obligation-row>b{grid-column:2;justify-self:start}.calendar-summary-card strong{font-size:.74rem}}
+
+
+/* ===== v0.6.1 • Reset financeiro seguro ===== */
+
+.danger-zone {
+  margin-top: 22px;
+  padding: 17px;
+  border: 1px solid #f0c9c9;
+  border-radius: 18px;
+  background: #fff8f8;
+}
+
+.danger-zone-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.danger-zone-head strong {
+  display: block;
+  margin-top: 3px;
+  color: #9e3f3f;
+}
+
+.danger-kicker {
+  color: #b95151;
+}
+
+.danger-badge {
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #a74646;
+  background: #fdeaea;
+  font-size: .62rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.danger-zone p {
+  margin: 12px 0 14px;
+  color: #7c5b5b;
+  font-size: .76rem;
+  line-height: 1.5;
+}
+
+.danger-outline-button {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid #d45d5d;
+  border-radius: 14px;
+  color: #b24747;
+  background: white;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.danger-sheet {
+  max-height: 92vh;
+}
+
+.danger-orb {
+  width: 68px;
+  height: 68px;
+  margin: 4px auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(135deg, #b94848, #e66b63);
+  box-shadow: 0 14px 30px rgba(190,70,70,.2);
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.reset-preserve-card,
+.reset-delete-card {
+  margin: 12px 0;
+  padding: 13px 14px;
+  border-radius: 16px;
+  display: grid;
+  gap: 8px;
+  font-size: .76rem;
+}
+
+.reset-preserve-card {
+  color: #276956;
+  background: #eef9f5;
+  border: 1px solid #ceeade;
+}
+
+.reset-delete-card {
+  color: #8e4a4a;
+  background: #fff4f4;
+  border: 1px solid #f1d2d2;
+}
+
+.reset-preserve-card span {
+  color: #0b956b;
+  font-weight: 900;
+}
+
+.reset-delete-card span {
+  color: #ca5050;
+  font-weight: 900;
+}
+
+.reset-confirm-field {
+  margin-top: 18px;
+}
+
+.backup-before-reset {
+  margin: 12px 2px 18px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #5e7079;
+  font-size: .76rem;
+}
+
+.backup-before-reset input {
+  width: 17px;
+  height: 17px;
+  accent-color: #0e8f6e;
+}
+
+.danger-button {
+  width: 100%;
+  min-height: 52px;
+  border: 0;
+  border-radius: 16px;
+  color: white;
+  background: linear-gradient(135deg, #b63e3e, #df5e57);
+  cursor: pointer;
+  font-weight: 850;
+  box-shadow: 0 10px 24px rgba(190,70,70,.18);
+}
+
+.danger-button:disabled {
+  opacity: .4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
