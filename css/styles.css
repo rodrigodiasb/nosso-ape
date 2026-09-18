@@ -1065,3 +1065,87 @@ svg {
   .small-mark { width:52px; height:52px; margin-bottom:22px; }
   .setup-card { position:relative; z-index:2; margin:-50px 14px 24px; padding:22px 18px; border-radius:26px; box-shadow:var(--shadow-strong); }
 }
+
+
+/* ===== v0.3 • Núcleo financeiro ===== */
+.select-box select { width:100%; border:0; outline:0; background:transparent; color:var(--text); min-width:0; }
+.two-cols { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.helper-note { margin:-8px 2px 15px; color:var(--muted); font-size:.7rem; line-height:1.45; }
+.audit-note { margin:4px 0 16px; padding:11px 12px; border-radius:13px; color:#5b6d75; background:#eef6f5; font-size:.72rem; }
+.check-row { display:flex; gap:9px; align-items:flex-start; margin:2px 0 17px; color:#52646d; font-size:.77rem; }
+.check-row input { width:18px; height:18px; accent-color:var(--green); }
+.split-area { display:grid; gap:8px; grid-template-columns:1fr 1fr; margin:-5px 0 16px; }
+.split-area label { padding:10px; border-radius:14px; background:#f7fafb; border:1px solid #e5ecef; }
+.split-area span { display:block; color:var(--muted); font-size:.67rem; margin-bottom:5px; }
+.split-area input { width:100%; border:0; outline:0; background:transparent; font-weight:800; }
+.reserve-hint { margin:-5px 0 15px; padding:10px 12px; border-radius:13px; background:#eef7ff; color:#4d6f89; font-size:.7rem; line-height:1.4; }
+.dashboard-contracts { display:grid; }
+.dashboard-contract-row { width:100%; padding:12px 0; border:0; border-top:1px solid #edf1f2; display:flex; align-items:center; gap:12px; text-align:left; background:transparent; cursor:pointer; }
+.dashboard-contract-row:first-child { border-top:0; padding-top:2px; }
+.sheet-heading-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.sheet-heading-row h3 { margin:0; }
+.mini-primary { border:0; border-radius:12px; padding:9px 12px; color:white; background:linear-gradient(135deg,#0c946d,#16bd7c); font-weight:800; cursor:pointer; }
+.contracts-full-list { display:grid; gap:10px; }
+.contract-list-card { width:100%; padding:16px; border:1px solid #e5ecef; border-radius:18px; text-align:left; background:white; cursor:pointer; box-shadow:0 3px 12px rgba(26,49,61,.035); }
+.contract-list-card strong { display:block; margin:8px 0 10px; font-size:.94rem; }
+.contract-list-card small { display:block; margin-top:8px; color:var(--muted); }
+.type-chip { display:inline-flex; padding:5px 8px; border-radius:999px; background:#e8f8f2; color:#08785e; font-size:.58rem; font-weight:900; letter-spacing:.07em; }
+.blue-chip { color:#2473bd; background:#eaf4ff; }
+.list-progress { height:8px; overflow:hidden; border-radius:999px; background:#e9eff1; }
+.list-progress i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,#0fbf79,#49d991); }
+.list-progress.large { height:12px; margin:16px 0 8px; }
+.big-empty { padding:28px 18px; text-align:center; border:1px dashed #ccdadd; border-radius:20px; background:#f7fafb; }
+.big-empty strong,.big-empty span { display:block; }
+.big-empty span { margin-top:5px; color:var(--muted); font-size:.76rem; }
+.detail-hero { padding:4px 0 18px; }
+.detail-hero h3 { margin:10px 0 4px; font-size:1.25rem; }
+.detail-hero p { margin:0 0 15px; color:var(--muted); font-size:.75rem; }
+.detail-hero > strong { display:block; font-size:2rem; letter-spacing:-.04em; }
+.detail-hero > small { color:var(--muted); }
+.detail-actions { margin:2px 0 18px; }
+.detail-actions .primary-button { width:100%; }
+.detail-stats { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin:0 0 16px; }
+.detail-stats div { padding:13px; border-radius:15px; background:#f6f9fa; border:1px solid #e7edef; }
+.detail-stats span,.detail-stats strong { display:block; }
+.detail-stats span { color:var(--muted); font-size:.67rem; }
+.detail-stats strong { margin-top:4px; }
+.installment-list { display:grid; gap:7px; }
+.installment-row { width:100%; min-height:62px; padding:9px 10px; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; border:1px solid #e7edef; border-radius:15px; text-align:left; background:white; cursor:pointer; }
+.installment-row:disabled { cursor:default; opacity:.72; }
+.installment-number { width:34px; height:34px; display:grid; place-items:center; border-radius:11px; background:#eef4f6; color:#5b6f79; font-weight:900; font-size:.7rem; }
+.installment-row strong,.installment-row small { display:block; }
+.installment-row strong { font-size:.75rem; }
+.installment-row small { margin-top:3px; color:var(--muted); font-size:.66rem; }
+.installment-row b { font-size:.72rem; }
+.installment-row.pago .installment-number { color:#08785e; background:#e8f8f2; }
+.installment-row.parcial .installment-number { color:#9a7611; background:#fff6d9; }
+.installment-row.vencido .installment-number { color:#bb4747; background:#ffeded; }
+.overdue-card { border-color:#f2baba; background:#fffafa; }
+.movements-list { display:grid; gap:8px; }
+.movement-row { padding:11px; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:10px; border:1px solid #e7edef; border-radius:16px; background:white; }
+.movement-icon { width:40px; height:40px; display:grid; place-items:center; border-radius:13px; font-weight:900; }
+.movement-icon.payment { color:#078565; background:#e8f8f2; }
+.movement-icon.expense { color:#d85c56; background:#fff0ef; }
+.movement-icon.reserve { color:#247ac8; background:#eaf4ff; }
+.movement-row strong,.movement-row span,.movement-row small { display:block; }
+.movement-row strong { font-size:.78rem; }
+.movement-row span { margin-top:3px; color:var(--muted); font-size:.65rem; }
+.movement-row small { margin-top:3px; color:#91a0a8; font-size:.61rem; }
+.movement-row > b { font-size:.76rem; }
+.celebration-layer { align-items:center; padding:18px; }
+.celebration-backdrop { background:rgba(4,27,31,.82); }
+.celebration-card { position:relative; width:min(100%,430px); padding:34px 26px 28px; overflow:hidden; border-radius:30px; text-align:center; color:white; background:radial-gradient(circle at 50% 0%,rgba(47,217,144,.24),transparent 35%),linear-gradient(160deg,#082f3a,#0b5f56); box-shadow:0 30px 80px rgba(0,0,0,.35); }
+.celebration-icon { width:82px; height:82px; margin:0 auto 15px; display:grid; place-items:center; border-radius:50%; color:#073f38; background:linear-gradient(145deg,#62e79f,#cbffb2); font-size:2rem; box-shadow:0 0 0 12px rgba(98,231,159,.08); }
+.celebration-card h3 { margin:6px 0 8px; font-size:1.9rem; }
+.celebration-card > strong { display:block; font-size:1.05rem; }
+.celebration-card > span { display:block; margin-top:7px; color:#8dffc6; font-weight:900; }
+.celebration-card p:last-of-type { color:rgba(255,255,255,.72); font-size:.78rem; line-height:1.5; }
+.celebration-progress { height:12px; margin:20px 0 0; overflow:hidden; border-radius:999px; background:rgba(255,255,255,.14); }
+.celebration-progress i { display:block; width:100%; height:100%; background:linear-gradient(90deg,#37d78b,#b7ff8f); }
+.confetti-box { position:absolute; inset:0; pointer-events:none; overflow:hidden; }
+.confetti-box i { position:absolute; top:-12px; width:7px; height:14px; border-radius:2px; background:#70e9a7; animation:confettiFall 2s ease-in forwards; }
+.confetti-box i:nth-child(3n) { background:#ffd365; }
+.confetti-box i:nth-child(4n) { background:#72b6ff; }
+.confetti-box i:nth-child(5n) { background:#ff7cac; }
+@keyframes confettiFall { to { top:105%; transform:rotate(520deg) translateX(35px); } }
+@media(max-width:430px){.two-cols,.split-area{grid-template-columns:1fr}.movement-row{grid-template-columns:auto 1fr}.movement-row>b{grid-column:2}.detail-stats{grid-template-columns:1fr 1fr}}

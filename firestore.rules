@@ -2,52 +2,15 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function email() {
-      return signedIn() && request.auth.token.email != null
-        ? request.auth.token.email
-        : "";
-    }
-
-    function memberPath(projectId, uid) {
-      return /databases/$(database)/documents/projects/$(projectId)/members/$(uid);
-    }
-
-    function projectPath(projectId) {
-      return /databases/$(database)/documents/projects/$(projectId);
-    }
-
-    function invitePath(inviteCode) {
-      return /databases/$(database)/documents/invites/$(inviteCode);
-    }
-
-    function isMember(projectId) {
-      return signedIn() && exists(memberPath(projectId, request.auth.uid));
-    }
-
-    function isOwner(projectId) {
-      return signedIn()
-        && exists(projectPath(projectId))
-        && get(projectPath(projectId)).data.ownerUid == request.auth.uid;
-    }
-
-    function ownerInPendingProject(projectId) {
-      return signedIn()
-        && getAfter(projectPath(projectId)).data.ownerUid == request.auth.uid;
-    }
-
-    function validInvite(projectId, inviteCode) {
-      return signedIn()
-        && inviteCode is string
-        && exists(invitePath(inviteCode))
-        && get(invitePath(inviteCode)).data.projectId == projectId
-        && get(invitePath(inviteCode)).data.email == email()
-        && get(invitePath(inviteCode)).data.status == "pending";
-    }
+    function signedIn() { return request.auth != null; }
+    function email() { return signedIn() && request.auth.token.email != null ? request.auth.token.email : ""; }
+    function memberPath(projectId, uid) { return /databases/$(database)/documents/projects/$(projectId)/members/$(uid); }
+    function projectPath(projectId) { return /databases/$(database)/documents/projects/$(projectId); }
+    function invitePath(code) { return /databases/$(database)/documents/invites/$(code); }
+    function isMember(projectId) { return signedIn() && exists(memberPath(projectId, request.auth.uid)); }
+    function isOwner(projectId) { return signedIn() && exists(projectPath(projectId)) && get(projectPath(projectId)).data.ownerUid == request.auth.uid; }
+    function ownerInPendingProject(projectId) { return signedIn() && getAfter(projectPath(projectId)).data.ownerUid == request.auth.uid; }
+    function validInvite(projectId, code) { return signedIn() && code is string && exists(invitePath(code)) && get(invitePath(code)).data.projectId == projectId && get(invitePath(code)).data.email == email() && get(invitePath(code)).data.status == "pending"; }
 
     match /users/{userId} {
       allow read, create, update: if signedIn() && request.auth.uid == userId;
@@ -55,126 +18,68 @@ service cloud.firestore {
     }
 
     match /projects/{projectId} {
-      allow create: if signedIn()
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.createdBy == request.auth.uid;
-
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid && request.resource.data.createdBy == request.auth.uid;
       allow read: if isMember(projectId);
-
-      allow update: if isMember(projectId)
-        && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.createdBy == resource.data.createdBy;
-
+      allow update: if isMember(projectId) && request.resource.data.ownerUid == resource.data.ownerUid && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if isOwner(projectId);
 
       match /members/{memberId} {
         allow read: if isMember(projectId);
-
-        allow create: if signedIn()
-          && memberId == request.auth.uid
-          && request.resource.data.uid == request.auth.uid
-          && (
-            (
-              request.resource.data.role == "owner"
-              && ownerInPendingProject(projectId)
-            )
-            ||
-            (
-              request.resource.data.role == "member"
-              && request.resource.data.inviteCode is string
-              && validInvite(projectId, request.resource.data.inviteCode)
-            )
-          );
-
-        allow update: if isMember(projectId)
-          && memberId == request.auth.uid
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.role == resource.data.role;
-
+        allow create: if signedIn() && memberId == request.auth.uid && request.resource.data.uid == request.auth.uid && ((request.resource.data.role == "owner" && ownerInPendingProject(projectId)) || (request.resource.data.role == "member" && request.resource.data.inviteCode is string && validInvite(projectId, request.resource.data.inviteCode)));
+        allow update: if isMember(projectId) && memberId == request.auth.uid && request.resource.data.uid == resource.data.uid && request.resource.data.role == resource.data.role;
         allow delete: if isOwner(projectId) || (signedIn() && memberId == request.auth.uid);
       }
 
       match /contracts/{contractId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId)
-          && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if isMember(projectId);
-      }
+        allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid && request.resource.data.type in ["installment", "recurring"];
+        allow update: if isMember(projectId) && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.type == resource.data.type;
+        allow delete: if false;
 
-      match /contracts/{contractId}/installments/{installmentId} {
-        allow read, write: if isMember(projectId);
+        match /installments/{installmentId} {
+          allow read: if isMember(projectId);
+          allow create: if isMember(projectId);
+          allow update: if isMember(projectId);
+          allow delete: if false;
+        }
       }
 
       match /payments/{paymentId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId)
-          && request.resource.data.registeredBy == request.auth.uid;
-        allow update: if isMember(projectId)
-          && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if isMember(projectId);
+        allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
+        allow update: if isMember(projectId) && request.resource.data.registeredBy == resource.data.registeredBy;
+        allow delete: if false;
       }
 
       match /expenses/{expenseId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId)
-          && request.resource.data.registeredBy == request.auth.uid;
-        allow update: if isMember(projectId)
-          && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if isMember(projectId);
+        allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
+        allow update: if isMember(projectId) && request.resource.data.registeredBy == resource.data.registeredBy;
+        allow delete: if false;
       }
 
       match /reserves/{reserveId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId)
-          && request.resource.data.createdBy == request.auth.uid;
-        allow update, delete: if isMember(projectId);
+        allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid;
+        allow update: if isMember(projectId) && request.resource.data.createdBy == resource.data.createdBy;
+        allow delete: if false;
       }
 
       match /reserveTransactions/{transactionId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId)
-          && request.resource.data.registeredBy == request.auth.uid;
-        allow update: if isMember(projectId)
-          && request.resource.data.registeredBy == resource.data.registeredBy;
-        allow delete: if isMember(projectId);
+        allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
+        allow update, delete: if false;
       }
     }
 
     match /invites/{inviteCode} {
-      allow get: if signedIn()
-        && (
-          resource.data.email == email()
-          || isMember(resource.data.projectId)
-        );
-
+      allow get: if signedIn() && (resource.data.email == email() || isMember(resource.data.projectId));
       allow list: if false;
-
-      allow create: if signedIn()
-        && request.resource.data.code == inviteCode
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.status == "pending"
-        && isMember(request.resource.data.projectId);
-
-      allow update: if signedIn()
-        && (
-          isMember(resource.data.projectId)
-          ||
-          (
-            resource.data.email == email()
-            && resource.data.status == "pending"
-            && request.resource.data.status == "accepted"
-            && request.resource.data.acceptedBy == request.auth.uid
-            && request.resource.data.projectId == resource.data.projectId
-            && request.resource.data.email == resource.data.email
-            && request.resource.data.code == resource.data.code
-          )
-        );
-
+      allow create: if signedIn() && request.resource.data.code == inviteCode && request.resource.data.createdBy == request.auth.uid && request.resource.data.status == "pending" && isMember(request.resource.data.projectId);
+      allow update: if signedIn() && (isMember(resource.data.projectId) || (resource.data.email == email() && resource.data.status == "pending" && request.resource.data.status == "accepted" && request.resource.data.acceptedBy == request.auth.uid && request.resource.data.projectId == resource.data.projectId && request.resource.data.email == resource.data.email && request.resource.data.code == resource.data.code));
       allow delete: if signedIn() && isMember(resource.data.projectId);
     }
 
-    match /{document=**} {
-      allow read, write: if false;
-    }
+    match /{document=**} { allow read, write: if false; }
   }
 }

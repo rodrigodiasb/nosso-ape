@@ -1,130 +1,66 @@
-# Nosso Apê — v0.2
+# Nosso Apê — v0.3
 
-Segunda base funcional da PWA.
+Núcleo financeiro real do projeto.
 
-## O que mudou nesta versão
+## O que já funciona
 
-- O dashboard deixou de usar valores fictícios.
-- O primeiro usuário pode criar o projeto real do imóvel.
-- Valor contratado e data da aquisição passam a vir do Cloud Firestore.
-- É possível convidar a segunda pessoa por e-mail + código de convite.
-- A segunda conta entra no mesmo projeto usando o código.
-- Ambos passam a visualizar o mesmo projeto.
-- Tela Projeto / imóvel permite editar os dados básicos.
-- Lista de membros vinculados.
-- Firestore Security Rules por projeto e membro.
-- Estrutura de segurança já reservada para contratos, parcelas, pagamentos, despesas e reservas.
+- Contrato parcelado com geração automática de até 480 parcelas.
+- Contrato recorrente/variável, adequado para juros de obra.
+- Meta/reserva financeira, adequada para móveis planejados.
+- Aporte em reserva com identificação de quem colocou o dinheiro.
+- Pagamento total ou parcial de parcelas.
+- Pagamento de contrato recorrente.
+- Pagamento direto ou usando saldo de uma reserva.
+- Despesa avulsa: cartório, certidões, taxas, banco, reforma etc.
+- `registeredBy` automático: quem deu baixa fica auditado pelo UID do login.
+- `shares`: registra quanto cada pessoa efetivamente aportou.
+- Dashboard real: valor do imóvel, custos adicionais, custo real conhecido, capital empregado, aportes e próximos vencimentos.
+- Extrato de movimentações.
+- Tela de conquista quando uma meta/reserva ou contrato parcelado chega a 100%.
 
-## ORDEM PARA ATUALIZAR
+## Regra contábil usada
 
-### 1. Atualize PRIMEIRO as regras do Firestore
+`Custo real conhecido = valor do imóvel + custos adicionais já reconhecidos`
 
-Firebase Console → Firestore Database → Regras
+`Capital empregado = pagamentos + despesas + saldo atual das reservas`
 
-Apague o conteúdo atual e cole integralmente o conteúdo do arquivo:
+Quando uma reserva é usada para pagar algo, o saldo da reserva cai e o pagamento/despesa aumenta. Portanto, o capital empregado não é contado duas vezes.
 
-`firestore.rules`
+## Atualização
 
-Clique em **Publicar**.
+1. Firebase Console → Firestore Database → Regras.
+2. Substitua pelas regras do arquivo `firestore.rules` desta versão e clique em Publicar.
+3. Depois substitua os arquivos do GitHub pelos arquivos da v0.3.
+4. Aguarde o GitHub Pages publicar e faça `Ctrl + F5`.
 
-### 2. Atualize os arquivos no GitHub
+## Primeiro teste recomendado
 
-Substitua os arquivos anteriores pelos arquivos desta v0.2.
+Crie:
 
-O arquivo novo mais importante é:
+### Entrada do apartamento
+- Tipo: Parcelado
+- Categoria: Aquisição
+- Como entra no custo real: Parte do valor do imóvel
+- Valor total: valor real da entrada
+- Quantidade: 23
+- Primeiro vencimento: data real
 
-`js/data.js`
+O aplicativo gerará as 23 parcelas.
 
-### 3. Recarregue o GitHub Pages
+### Juros de obra
+- Tipo: Recorrente / valor variável
+- Categoria: Juros de obra
+- Como entra no custo real: Custo adicional
 
-O Service Worker mudou de `v01` para `v02`.
+Cada pagamento de juros aumentará automaticamente `Custos adicionais` e `Custo real conhecido`.
 
-Se a versão anterior continuar aparecendo:
-- faça recarga forçada (Ctrl + F5), ou
-- feche e abra novamente o PWA, ou
-- remova e instale novamente o atalho do aplicativo apenas se necessário.
+### Móveis planejados
+- Tipo: Meta / reserva financeira
+- Categoria: Móveis
+- Meta financeira: valor que vocês querem juntar
 
-## TESTE A — criar o projeto
+Cada aporte aumentará o `Capital empregado`, mas não o custo real enquanto o dinheiro estiver apenas reservado.
 
-Entre com a conta que será usada para criar o projeto.
+## Atenção sobre financiamento
 
-Como essa conta ainda não tem projeto vinculado, aparecerá uma nova tela:
-
-**Criar projeto | Entrar com convite**
-
-Escolha **Criar projeto**.
-
-Preencha:
-- nome do projeto;
-- valor contratado do imóvel;
-- data do contrato;
-- e-mail da outra pessoa.
-
-Ao concluir, será gerado um código semelhante a:
-
-`J7K8Q2PM`
-
-Copie esse código.
-
-## TESTE B — conectar a segunda conta
-
-1. Saia da primeira conta.
-2. Entre com a segunda conta.
-3. Escolha **Entrar com convite**.
-4. Informe o código gerado.
-5. A conta deve passar a visualizar o mesmo projeto.
-
-O convite somente pode ser lido/aceito pela conta cujo e-mail seja igual ao e-mail informado na criação do convite.
-
-## TESTE C — acesso compartilhado
-
-Altere o valor do imóvel em:
-
-Mais → Projeto / imóvel
-
-Salve.
-
-Depois entre com a outra conta.
-
-O novo valor deve aparecer para os dois usuários.
-
-## Estrutura criada no Firestore
-
-Após o teste, você verá automaticamente:
-
-```text
-users
-  └── UID
-       └── activeProjectId
-
-projects
-  └── projectId
-       ├── name
-       ├── propertyValue
-       ├── ownerUid
-       └── members
-            ├── UID 1
-            └── UID 2
-
-invites
-  └── CODIGO
-       ├── projectId
-       ├── email
-       └── status
-```
-
-NÃO é necessário criar nenhuma dessas coleções manualmente.
-
-## Próxima versão
-
-A v0.3 será o núcleo financeiro:
-
-- criação de contratos;
-- contrato parcelado;
-- contrato recorrente variável;
-- meta financeira;
-- geração automática de parcelas;
-- baixa total/parcial;
-- identificação de quem pagou;
-- auditoria de quem registrou;
-- primeiro cálculo real de capital empregado.
+Nesta versão, se o financiamento for cadastrado como `Parte do valor do imóvel`, as parcelas não são somadas novamente ao custo real, evitando duplicar o preço do apartamento. Juros bancários embutidos em financiamento ainda não são separados automaticamente entre principal e juros. Esse refinamento poderá entrar em uma versão posterior.

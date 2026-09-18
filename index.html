@@ -230,6 +230,7 @@
           <button class="ghost-button" data-coming-soon>Ver todos</button>
         </div>
 
+        <div id="dashboardContracts" class="dashboard-contracts">
         <div class="empty-contract">
           <div class="empty-contract-icon">
             <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>
@@ -239,9 +240,10 @@
             <span>Na próxima etapa entraremos com entrada, parcelas, financiamento, juros de obra e móveis.</span>
           </div>
         </div>
+        </div>
       </section>
 
-      <section class="card next-payment-card muted-payment">
+      <section id="nextPaymentCard" class="card next-payment-card muted-payment">
         <div class="next-payment-icon">✓</div>
         <div>
           <span class="section-kicker">PRÓXIMOS COMPROMISSOS</span>
@@ -260,7 +262,7 @@
         <span>Início</span>
       </button>
 
-      <button class="nav-item" type="button" data-coming-soon>
+      <button id="contractsNav" class="nav-item" type="button">
         <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>
         <span>Contratos</span>
       </button>
@@ -269,7 +271,7 @@
         <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
       </button>
 
-      <button class="nav-item" type="button" data-coming-soon>
+      <button id="movementsNav" class="nav-item" type="button">
         <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5Z"/><path d="M8 9h8M8 13h5"/></svg>
         <span>Gastos</span>
       </button>
@@ -288,7 +290,7 @@
       <div class="sheet-handle"></div>
       <h3 id="quickAddTitle">O que deseja registrar?</h3>
 
-      <button class="action-option" data-coming-soon>
+      <button id="quickPayment" class="action-option">
         <span class="action-icon green">
           <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 9h8M8 13h5"/></svg>
         </span>
@@ -296,7 +298,7 @@
         <b>›</b>
       </button>
 
-      <button class="action-option" data-coming-soon>
+      <button id="quickExpense" class="action-option">
         <span class="action-icon coral">
           <svg viewBox="0 0 24 24"><path d="M6 3h12v18H6Z"/><path d="M9 8h6M9 12h6"/></svg>
         </span>
@@ -304,7 +306,7 @@
         <b>›</b>
       </button>
 
-      <button class="action-option" data-coming-soon>
+      <button id="quickReserve" class="action-option">
         <span class="action-icon blue">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M8.5 10h5a2 2 0 1 1 0 4h-3"/></svg>
         </span>
@@ -312,7 +314,7 @@
         <b>›</b>
       </button>
 
-      <button class="action-option" data-coming-soon>
+      <button id="quickContract" class="action-option">
         <span class="action-icon purple">
           <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
         </span>
@@ -374,6 +376,145 @@
         <label class="field"><span>E-mail</span><div class="field-box"><input id="newInviteEmail" type="email" placeholder="email@exemplo.com" required /></div></label>
         <button class="secondary-button" type="submit">Gerar código de convite</button>
       </form>
+    </div>
+  </div>
+
+
+  <!-- NOVO CONTRATO / META -->
+  <div id="contractModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="contractModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="contractModalTitle">Novo compromisso financeiro</h3>
+      <form id="contractForm" class="setup-form">
+        <label class="field"><span>Tipo</span><div class="field-box select-box"><select id="contractType" required><option value="installment">Parcelado</option><option value="recurring">Recorrente / valor variável</option><option value="reserve">Meta / reserva financeira</option></select></div></label>
+        <label class="field"><span>Nome</span><div class="field-box"><input id="contractName" type="text" placeholder="Ex.: Entrada do apartamento" maxlength="80" required></div></label>
+        <label class="field"><span>Categoria</span><div class="field-box select-box"><select id="contractCategory"><option>Aquisição</option><option>Financiamento</option><option>Juros de obra</option><option>Documentação</option><option>Banco</option><option>Entrega</option><option>Reforma</option><option selected>Móveis</option><option>Outros</option></select></div></label>
+
+        <div id="costTreatmentGroup">
+          <label class="field"><span>Como entra no custo real?</span><div class="field-box select-box"><select id="costTreatment"><option value="property">Parte do valor do imóvel — não soma novamente</option><option value="additional">Custo adicional — soma ao custo real conforme for pago</option></select></div></label>
+          <p class="helper-note">Ex.: entrada = parte do imóvel. Juros de obra = custo adicional.</p>
+        </div>
+
+        <div id="installmentFields">
+          <div class="two-cols"><label class="field"><span>Valor total</span><div class="field-box money-box"><b>R$</b><input id="contractTotal" type="number" min="0" step="0.01"></div></label><label class="field"><span>Nº de parcelas</span><div class="field-box"><input id="contractInstallments" type="number" min="1" max="480" step="1"></div></label></div>
+          <label class="field"><span>Primeiro vencimento</span><div class="field-box"><input id="contractFirstDue" type="date"></div></label>
+        </div>
+
+        <div id="recurringFields" class="hidden">
+          <label class="field"><span>Valor mensal estimado (opcional)</span><div class="field-box money-box"><b>R$</b><input id="recurringEstimate" type="number" min="0" step="0.01"></div></label>
+          <label class="field"><span>Início</span><div class="field-box"><input id="recurringStart" type="date"></div></label>
+        </div>
+
+        <div id="reserveFields" class="hidden">
+          <label class="field"><span>Meta financeira</span><div class="field-box money-box"><b>R$</b><input id="reserveTarget" type="number" min="0" step="0.01"></div></label>
+        </div>
+        <button id="saveContractButton" class="primary-button" type="submit"><span>Salvar</span><span class="button-arrow">→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PAGAMENTO -->
+  <div id="paymentModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="paymentModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="paymentModalTitle">Registrar pagamento</h3>
+      <form id="paymentForm" class="setup-form">
+        <label class="field"><span>Contrato</span><div class="field-box select-box"><select id="paymentContract" required></select></div></label>
+        <label id="paymentInstallmentField" class="field hidden"><span>Parcela</span><div class="field-box select-box"><select id="paymentInstallment"></select></div></label>
+        <div class="two-cols"><label class="field"><span>Valor pago</span><div class="field-box money-box"><b>R$</b><input id="paymentAmount" type="number" min="0.01" step="0.01" required></div></label><label class="field"><span>Data</span><div class="field-box"><input id="paymentDate" type="date" required></div></label></div>
+        <label class="field"><span>Origem do dinheiro</span><div class="field-box select-box"><select id="paymentSource"><option value="direct">Pagamento direto</option></select></div></label>
+        <div id="paymentPayerArea"></div>
+        <label class="field"><span>Forma de pagamento</span><div class="field-box select-box"><select id="paymentMethod"><option>Pix</option><option>Boleto</option><option>Transferência</option><option>Débito</option><option>Crédito</option><option>Outro</option></select></div></label>
+        <label class="field"><span>Observação (opcional)</span><div class="field-box"><input id="paymentNotes" type="text" maxlength="160"></div></label>
+        <div class="audit-note">A baixa será registrada automaticamente em nome de <strong id="paymentRegisteredBy">—</strong>.</div>
+        <button id="savePaymentButton" class="primary-button" type="submit"><span>Confirmar pagamento</span><span class="button-arrow">→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- DESPESA AVULSA -->
+  <div id="expenseModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="expenseModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="expenseModalTitle">Nova despesa</h3>
+      <form id="expenseForm" class="setup-form">
+        <label class="field"><span>Descrição</span><div class="field-box"><input id="expenseDescription" type="text" placeholder="Ex.: Certidão de matrícula" maxlength="100" required></div></label>
+        <label class="field"><span>Categoria</span><div class="field-box select-box"><select id="expenseCategory"><option>Aquisição</option><option>Documentação</option><option>Banco</option><option>Juros de obra</option><option>Entrega</option><option>Reforma</option><option>Móveis</option><option selected>Outros</option></select></div></label>
+        <div class="two-cols"><label class="field"><span>Valor</span><div class="field-box money-box"><b>R$</b><input id="expenseAmount" type="number" min="0.01" step="0.01" required></div></label><label class="field"><span>Data</span><div class="field-box"><input id="expenseDate" type="date" required></div></label></div>
+        <label class="field"><span>Origem do dinheiro</span><div class="field-box select-box"><select id="expenseSource"><option value="direct">Pagamento direto</option></select></div></label>
+        <div id="expensePayerArea"></div>
+        <label class="check-row"><input id="expenseRealCost" type="checkbox" checked><span>Incluir esta despesa no custo real do projeto</span></label>
+        <label class="field"><span>Observação (opcional)</span><div class="field-box"><input id="expenseNotes" type="text" maxlength="160"></div></label>
+        <div class="audit-note">Registro realizado por <strong id="expenseRegisteredBy">—</strong>.</div>
+        <button id="saveExpenseButton" class="primary-button" type="submit"><span>Salvar despesa</span><span class="button-arrow">→</span></button>
+      </form>
+    </div>
+  </div>
+
+  <!-- RESERVAS -->
+  <div id="reserveModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="reserveModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="reserveModalTitle">Reserva / aporte</h3>
+      <form id="reserveContributionForm" class="setup-form">
+        <label class="field"><span>Meta / reserva</span><div class="field-box select-box"><select id="reserveSelect" required></select></div></label>
+        <div id="reserveBalanceHint" class="reserve-hint"></div>
+        <div class="two-cols"><label class="field"><span>Valor do aporte</span><div class="field-box money-box"><b>R$</b><input id="reserveContributionAmount" type="number" min="0.01" step="0.01" required></div></label><label class="field"><span>Data</span><div class="field-box"><input id="reserveContributionDate" type="date" required></div></label></div>
+        <div id="reservePayerArea"></div>
+        <label class="field"><span>Observação (opcional)</span><div class="field-box"><input id="reserveContributionNotes" type="text" maxlength="160"></div></label>
+        <button id="saveReserveContribution" class="primary-button" type="submit"><span>Adicionar à reserva</span><span class="button-arrow">→</span></button>
+      </form>
+      <div class="divider"></div>
+      <button id="createReserveFromReserveModal" class="secondary-button" type="button">Criar nova meta financeira</button>
+    </div>
+  </div>
+
+  <!-- LISTA DE CONTRATOS -->
+  <div id="contractsModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="contractsModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading-row"><h3 id="contractsModalTitle">Contratos e metas</h3><button id="newContractFromList" class="mini-primary" type="button">+ Novo</button></div>
+      <div id="contractsFullList" class="contracts-full-list"></div>
+    </div>
+  </div>
+
+  <!-- DETALHE DO CONTRATO -->
+  <div id="contractDetailModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="contractDetailTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <div id="contractDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- MOVIMENTAÇÕES -->
+  <div id="movementsModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="movementsModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="movementsModalTitle">Movimentações</h3>
+      <div id="movementsList" class="movements-list"></div>
+    </div>
+  </div>
+
+  <!-- CONQUISTA -->
+  <div id="celebrationModal" class="modal-layer hidden celebration-layer" role="dialog" aria-modal="true" aria-labelledby="celebrationTitle">
+    <button class="modal-backdrop celebration-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="celebration-card">
+      <div id="confettiBox" class="confetti-box"></div>
+      <div class="celebration-icon">⌂</div>
+      <p class="eyebrow light">CONQUISTA DESBLOQUEADA</p>
+      <h3 id="celebrationTitle">Meta alcançada!</h3>
+      <strong id="celebrationName">—</strong>
+      <div class="celebration-progress"><i></i></div>
+      <span>100%</span>
+      <p id="celebrationCopy">Mais uma etapa do nosso projeto concluída.</p>
+      <button id="closeCelebration" class="primary-button" type="button">Continuar</button>
     </div>
   </div>
 
