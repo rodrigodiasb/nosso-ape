@@ -441,6 +441,7 @@ export async function addReserveContribution(projectId, payload, user) {
       shares,
       notes: payload.notes?.trim() || "",
       registeredBy: user.uid,
+      status: "active",
       createdAt: serverTimestamp()
     });
   });
@@ -529,7 +530,9 @@ export async function recordPayment(projectId, payload, user) {
       costTreatment: contract.costTreatment || "property",
       principalAmount,
       financingAdditionalAmount,
+      markInstallmentPaid: contract.type === "financing" ? payload.markInstallmentPaid !== false : null,
       registeredBy: user.uid,
+      status: "active",
       createdAt: serverTimestamp()
     });
 
@@ -576,6 +579,7 @@ export async function recordPayment(projectId, payload, user) {
         date: payload.paymentDate,
         linkedPaymentId: paymentRef.id,
         registeredBy: user.uid,
+        status: "active",
         createdAt: serverTimestamp()
       });
     }
@@ -619,6 +623,7 @@ export async function createExpense(projectId, payload, user) {
       countInRealCost: payload.countInRealCost !== false,
       notes: payload.notes?.trim() || "",
       registeredBy: user.uid,
+      status: "active",
       createdAt: serverTimestamp()
     });
 
@@ -635,10 +640,183 @@ export async function createExpense(projectId, payload, user) {
         date: payload.date,
         linkedExpenseId: expenseRef.id,
         registeredBy: user.uid,
+        status: "active",
         createdAt: serverTimestamp()
       });
     }
   });
 
   return { id: expenseRef.id };
+}
+
+
+function isReversed(record) {
+  return record?.status === "reversed";
+}
+
+function reversalFields(reason, user) {
+  const cleanReason = String(reason || "").trim();
+  if (cleanReason.length < 5) {
+    throw new Error("Informe um motivo de estorno com pelo menos 5 caracteres.");
+  }
+  return {
+    status: "reversed",
+    reversedBy: user.uid,
+    reversedAt: serverTimestamp(),
+    reversalReason: cleanReason,
+    updatedAt: serverTimestamp()
+  };
+}
+
+export async function reversePayment(projectId, paymentId, reserveTransactionId, reason, user) {
+  const paymentRef = doc(db, "projects", projectId, "payments", paymentId);
+
+  await runTransaction(db, async transaction => {
+    const paymentSnap = await transaction.get(paymentRef);
+    if (!paymentSnap.exists()) throw new Error("Pagamento não encontrado.");
+    const payment = paymentSnap.data();
+    if (isReversed(payment)) throw new Error("Este pagamento já foi estornado.");
+
+    const amount = Number(payment.amount) || 0;
+    const contractRef = doc(db, "projects", projectId, "contracts", payment.contractId);
+    const contractSnap = await transaction.get(contractRef);
+    if (!contractSnap.exists()) throw new Error("Contrato relacionado não encontrado.");
+    const contract = contractSnap.data();
+
+    let installmentRef = null;
+    let installment = null;
+    if (payment.installmentId) {
+      installmentRef = doc(db, "projects", projectId, "contracts", payment.contractId, "installments", payment.installmentId);
+      const installmentSnap = await transaction.get(installmentRef);
+      if (!installmentSnap.exists()) throw new Error("Parcela relacionada não encontrada.");
+      installment = installmentSnap.data();
+    }
+
+    let reserveRef = null;
+    let reserve = null;
+    let reserveTxRef = null;
+    let reserveTx = null;
+    if (payment.sourceReserveId) {
+      reserveRef = doc(db, "projects", projectId, "reserves", payment.sourceReserveId);
+      const reserveSnap = await transaction.get(reserveRef);
+      if (!reserveSnap.exists()) throw new Error("Reserva relacionada não encontrada.");
+      reserve = reserveSnap.data();
+
+      if (!reserveTransactionId) throw new Error("Não foi possível localizar a movimentação da reserva vinculada.");
+      reserveTxRef = doc(db, "projects", projectId, "reserveTransactions", reserveTransactionId);
+      const reserveTxSnap = await transaction.get(reserveTxRef);
+      if (!reserveTxSnap.exists()) throw new Error("Movimentação da reserva não encontrada.");
+      reserveTx = reserveTxSnap.data();
+    }
+
+    transaction.update(paymentRef, reversalFields(reason, user));
+
+    if (installmentRef && installment) {
+      const newPaid = Math.max(0, Math.round(((Number(installment.paidValue) || 0) - amount) * 100) / 100);
+
+      if (contract.type === "financing") {
+        const principal = Number(payment.principalAmount) || 0;
+        const additional = Number(payment.financingAdditionalAmount) || 0;
+        const newPrincipal = Math.max(0, Math.round(((Number(installment.principalPaid) || 0) - principal) * 100) / 100);
+        const newAdditional = Math.max(0, Math.round(((Number(installment.additionalPaid) || 0) - additional) * 100) / 100);
+
+        transaction.update(installmentRef, {
+          paidValue: newPaid,
+          principalPaid: newPrincipal,
+          additionalPaid: newAdditional,
+          status: newPaid <= 0.009 ? "future" : "partial",
+          updatedAt: serverTimestamp()
+        });
+
+        transaction.update(contractRef, {
+          principalPaid: Math.max(0, Math.round(((Number(contract.principalPaid) || 0) - principal) * 100) / 100),
+          financingAdditionalPaid: Math.max(0, Math.round(((Number(contract.financingAdditionalPaid) || 0) - additional) * 100) / 100),
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        const expected = Number(installment.expectedValue) || 0;
+        transaction.update(installmentRef, {
+          paidValue: newPaid,
+          status: newPaid <= 0.009 ? "future" : (newPaid + 0.009 >= expected ? "paid" : "partial"),
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    if (reserveRef && reserve && reserveTxRef && reserveTx) {
+      transaction.update(reserveRef, {
+        currentBalance: Math.round(((Number(reserve.currentBalance) || 0) + amount) * 100) / 100,
+        usedTotal: Math.max(0, Math.round(((Number(reserve.usedTotal) || 0) - amount) * 100) / 100),
+        updatedAt: serverTimestamp()
+      });
+      transaction.update(reserveTxRef, reversalFields(`Estorno do pagamento: ${String(reason || "").trim()}`, user));
+    }
+  });
+}
+
+export async function reverseExpense(projectId, expenseId, reserveTransactionId, reason, user) {
+  const expenseRef = doc(db, "projects", projectId, "expenses", expenseId);
+
+  await runTransaction(db, async transaction => {
+    const expenseSnap = await transaction.get(expenseRef);
+    if (!expenseSnap.exists()) throw new Error("Despesa não encontrada.");
+    const expense = expenseSnap.data();
+    if (isReversed(expense)) throw new Error("Esta despesa já foi estornada.");
+
+    const amount = Number(expense.amount) || 0;
+    let reserveRef = null;
+    let reserveTxRef = null;
+    let reserve = null;
+
+    if (expense.sourceReserveId) {
+      if (!reserveTransactionId) throw new Error("Não foi possível localizar a movimentação da reserva vinculada.");
+      reserveRef = doc(db, "projects", projectId, "reserves", expense.sourceReserveId);
+      reserveTxRef = doc(db, "projects", projectId, "reserveTransactions", reserveTransactionId);
+      const reserveSnap = await transaction.get(reserveRef);
+      const txSnap = await transaction.get(reserveTxRef);
+      if (!reserveSnap.exists() || !txSnap.exists()) throw new Error("Reserva relacionada não encontrada.");
+      reserve = reserveSnap.data();
+    }
+
+    transaction.update(expenseRef, reversalFields(reason, user));
+
+    if (reserveRef && reserveTxRef && reserve) {
+      transaction.update(reserveRef, {
+        currentBalance: Math.round(((Number(reserve.currentBalance) || 0) + amount) * 100) / 100,
+        usedTotal: Math.max(0, Math.round(((Number(reserve.usedTotal) || 0) - amount) * 100) / 100),
+        updatedAt: serverTimestamp()
+      });
+      transaction.update(reserveTxRef, reversalFields(`Estorno da despesa: ${String(reason || "").trim()}`, user));
+    }
+  });
+}
+
+export async function reverseReserveContribution(projectId, transactionId, reason, user) {
+  const txRef = doc(db, "projects", projectId, "reserveTransactions", transactionId);
+
+  await runTransaction(db, async transaction => {
+    const txSnap = await transaction.get(txRef);
+    if (!txSnap.exists()) throw new Error("Aporte não encontrado.");
+    const reserveTx = txSnap.data();
+    if (reserveTx.type !== "contribution") throw new Error("Somente aportes podem ser estornados diretamente.");
+    if (isReversed(reserveTx)) throw new Error("Este aporte já foi estornado.");
+
+    const amount = Number(reserveTx.amount) || 0;
+    const reserveRef = doc(db, "projects", projectId, "reserves", reserveTx.reserveId);
+    const reserveSnap = await transaction.get(reserveRef);
+    if (!reserveSnap.exists()) throw new Error("Reserva não encontrada.");
+    const reserve = reserveSnap.data();
+    const available = Number(reserve.currentBalance) || 0;
+
+    if (available + 0.009 < amount) {
+      throw new Error("Este aporte não pode ser estornado porque parte do valor já foi utilizada. Estorne primeiro os pagamentos/despesas feitos com essa reserva.");
+    }
+
+    transaction.update(reserveRef, {
+      currentBalance: Math.max(0, Math.round((available - amount) * 100) / 100),
+      contributedTotal: Math.max(0, Math.round(((Number(reserve.contributedTotal) || 0) - amount) * 100) / 100),
+      updatedAt: serverTimestamp()
+    });
+    transaction.update(txRef, reversalFields(reason, user));
+  });
 }

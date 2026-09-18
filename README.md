@@ -1,79 +1,95 @@
-# Nosso Apê — v0.4
+# Nosso Apê — v0.5
 
-Versão de inteligência financeira e financiamento bancário.
+Versão de integridade financeira, estornos e backup.
 
-## Novidades
+## O que entrou
 
-- Novo tipo de contrato: **Financiamento bancário**.
-- O principal financiado não é somado novamente ao custo real do imóvel.
-- Em cada prestação, o pagamento é dividido entre:
-  - amortização do principal;
-  - juros + seguros + encargos.
-- Só a parte de juros/seguros/encargos aumenta os **Custos adicionais**.
-- O valor integral da prestação continua compondo o **Capital empregado**.
-- Acompanhamento do principal ainda não amortizado.
-- Relatórios visuais:
-  - custo real conhecido;
-  - percentual de custos adicionais sobre o valor do imóvel;
+- Estorno seguro de pagamentos, despesas e aportes em reservas.
+- Nenhum lançamento financeiro é apagado: o original permanece visível como **ESTORNADO**.
+- Registro de quem realizou o lançamento e de quem realizou o estorno.
+- Motivo obrigatório para o estorno.
+- Reversão automática dos efeitos financeiros do lançamento:
+  - parcela;
+  - amortização do financiamento;
+  - custos adicionais;
   - capital empregado;
-  - saldo em reservas;
-  - distribuição do dinheiro por categoria;
-  - custos adicionais por categoria;
-  - ritmo mensal de aportes;
-  - parcelas futuras conhecidas;
-  - principal de financiamento ainda não amortizado;
-  - compromissos estimados dos próximos 30 dias.
+  - participação individual;
+  - saldo de reservas.
+- Proteção contra estorno de aporte já consumido por uma reserva.
+- Exportação de backup completo em JSON.
+- Exportação de movimentações em CSV compatível com Excel.
+- Regras do Firestore mais restritivas: lançamentos financeiros não podem ter valor/data/pagadores adulterados após a criação; somente campos de estorno podem ser acrescentados.
 
 ## Atualização
 
-1. Publique primeiro o novo `firestore.rules` no Firebase.
-2. Depois substitua os arquivos do GitHub pela v0.4.
-3. Aguarde o GitHub Pages publicar.
-4. Faça `Ctrl + F5` no computador e feche/abra o PWA no celular.
+### 1. Publique PRIMEIRO as novas regras
 
-## Teste recomendado — financiamento
+Firebase → Firestore Database → Regras
 
-Crie um novo compromisso:
+Cole integralmente o arquivo `firestore.rules` desta versão e clique em **Publicar**.
 
-- Tipo: `Financiamento bancário`
-- Nome: `Financiamento do apartamento`
-- Valor financiado (principal): use um valor de teste
-- Número de parcelas: por exemplo 360
-- Primeiro vencimento: uma data válida
-- Prestação estimada inicial: opcional
+### 2. Atualize o GitHub Pages
 
-Ao registrar uma prestação, informe um exemplo como:
+Substitua os arquivos pelos da v0.5.
 
-- Total pago: R$ 3.200,00
-- Amortização do principal: R$ 1.450,00
-- Juros + seguros + encargos: R$ 1.750,00
+O Service Worker foi alterado para `v05`.
 
-A soma dos dois componentes precisa ser igual ao total pago.
+Depois use `Ctrl + F5`. No celular, feche a PWA completamente e abra novamente.
+
+## Teste recomendado
+
+Use um valor pequeno de teste para não interferir nos dados reais.
+
+1. Crie uma despesa de R$ 1,00.
+2. Abra **Gastos / Movimentações**.
+3. Toque na despesa.
+4. Informe como motivo: `Teste de estorno da v0.5`.
+5. Toque em **Estornar lançamento**.
 
 Resultado esperado:
 
-- `Capital empregado` aumenta R$ 3.200,00.
-- `Custos adicionais` aumentam somente R$ 1.750,00.
-- `Principal restante` cai R$ 1.450,00.
+- a despesa continua aparecendo no histórico como **ESTORNADO**;
+- o valor deixa de compor o capital empregado;
+- o valor deixa de compor o custo adicional, se estava marcado para compor;
+- aparece quem realizou o estorno e o motivo;
+- a outra conta também visualiza o lançamento estornado.
 
-## Relatórios
+### Teste de reserva
+
+Se um gasto pago com uma reserva for estornado, o dinheiro deve retornar para o saldo disponível da reserva.
+
+Se tentar estornar um aporte em reserva cujo dinheiro já foi usado, o aplicativo bloqueia e orienta a estornar primeiro o gasto/pagamento vinculado.
+
+## Backup
 
 Acesse:
 
-`Mais → Relatórios`
+**Mais → Backup e exportação**
 
-Os relatórios trabalham somente com valores já registrados ou conhecidos. O aplicativo não inventa juros futuros do financiamento.
+Há duas opções:
 
-## Compatibilidade
+- **JSON:** cópia completa do projeto e estrutura financeira para segurança/recuperação futura.
+- **CSV:** extrato de movimentações para abrir no Excel, incluindo lançamentos ativos e estornados.
 
-Os contratos, despesas, reservas e pagamentos já cadastrados na v0.3 continuam compatíveis.
+## Estratégia adotada para correções
 
-## Próxima etapa sugerida
+Nesta versão não existe edição silenciosa de valores financeiros já registrados.
 
-A v0.5 deve priorizar integridade e manutenção dos dados:
+A correção segura é:
 
-- correção/estorno de lançamentos;
-- edição controlada de contratos;
-- histórico de alterações;
-- exportação/backup CSV e JSON;
-- calendário financeiro completo.
+1. estornar o lançamento incorreto;
+2. manter o registro original para rastreabilidade;
+3. cadastrar um novo lançamento com o valor correto.
+
+Isso reduz o risco de perda de histórico e inconsistência nos totais.
+
+## Próxima versão sugerida
+
+v0.6 — calendário financeiro e previsões:
+
+- calendário mensal;
+- vencimentos por dia;
+- próximos 7/30/60/90 dias;
+- visão de fluxo de caixa futuro;
+- alertas visuais de parcelas próximas e vencidas;
+- preparação para notificações locais da PWA.

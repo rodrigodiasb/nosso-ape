@@ -11,6 +11,11 @@ service cloud.firestore {
     function isOwner(projectId) { return signedIn() && exists(projectPath(projectId)) && get(projectPath(projectId)).data.ownerUid == request.auth.uid; }
     function ownerInPendingProject(projectId) { return signedIn() && getAfter(projectPath(projectId)).data.ownerUid == request.auth.uid; }
     function validInvite(projectId, code) { return signedIn() && code is string && exists(invitePath(code)) && get(invitePath(code)).data.projectId == projectId && get(invitePath(code)).data.email == email() && get(invitePath(code)).data.status == "pending"; }
+    function reversalOnly() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "reversedBy", "reversedAt", "reversalReason", "updatedAt"])
+        && request.resource.data.status == "reversed"
+        && request.resource.data.reversedBy == request.auth.uid;
+    }
 
     match /users/{userId} {
       allow read, create, update: if signedIn() && request.auth.uid == userId;
@@ -33,13 +38,17 @@ service cloud.firestore {
       match /contracts/{contractId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid && request.resource.data.type in ["installment", "recurring", "financing"];
-        allow update: if isMember(projectId) && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.type == resource.data.type;
+        allow update: if isMember(projectId)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["principalPaid", "financingAdditionalPaid", "status", "updatedAt"]);
         allow delete: if false;
 
         match /installments/{installmentId} {
           allow read: if isMember(projectId);
           allow create: if isMember(projectId);
-          allow update: if isMember(projectId);
+          allow update: if isMember(projectId)
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["paidValue", "principalPaid", "additionalPaid", "status", "updatedAt"]);
           allow delete: if false;
         }
       }
@@ -47,28 +56,31 @@ service cloud.firestore {
       match /payments/{paymentId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
-        allow update: if isMember(projectId) && request.resource.data.registeredBy == resource.data.registeredBy;
+        allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
         allow delete: if false;
       }
 
       match /expenses/{expenseId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
-        allow update: if isMember(projectId) && request.resource.data.registeredBy == resource.data.registeredBy;
+        allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
         allow delete: if false;
       }
 
       match /reserves/{reserveId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid;
-        allow update: if isMember(projectId) && request.resource.data.createdBy == resource.data.createdBy;
+        allow update: if isMember(projectId)
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["currentBalance", "contributedTotal", "usedTotal", "status", "updatedAt"]);
         allow delete: if false;
       }
 
       match /reserveTransactions/{transactionId} {
         allow read: if isMember(projectId);
         allow create: if isMember(projectId) && request.resource.data.registeredBy == request.auth.uid;
-        allow update, delete: if false;
+        allow update: if isMember(projectId) && reversalOnly() && request.resource.data.registeredBy == resource.data.registeredBy;
+        allow delete: if false;
       }
     }
 

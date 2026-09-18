@@ -1154,3 +1154,70 @@ svg {
 /* ===== v0.4 • Financiamento + relatórios visuais ===== */
 .finance-explainer{margin:0 0 16px;padding:14px;border-radius:16px;background:linear-gradient(135deg,#edf7ff,#edf9f5);border:1px solid #dcecef}.finance-explainer strong,.finance-explainer span{display:block}.finance-explainer strong{font-size:.82rem;color:#176b69}.finance-explainer span{margin-top:4px;color:#677981;font-size:.72rem;line-height:1.45}.financing-payment-box{margin:4px 0 16px;padding:14px;border:1px solid #dfeaf0;border-radius:18px;background:#f8fbfd}.finance-sum-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 2px;color:#61737c;font-size:.76rem}.finance-sum-row strong{color:#08765f}.finance-sum-row strong.sum-mismatch{color:#d45555}.financing-chip{color:#2278cc!important;background:#e7f2ff!important}.blue-progress i{background:linear-gradient(90deg,#2a89f4,#59b7ff)!important}.financing-detail{background:linear-gradient(135deg,#f5fbff,#eff8ff)!important}.report-sheet{max-height:94vh}.report-hero{padding:18px;border-radius:22px;color:white;background:linear-gradient(135deg,#116fc8,#0aaa87 60%,#49c982);box-shadow:0 14px 30px rgba(19,118,137,.16)}.report-hero-main span,.report-hero-main strong,.report-hero-main small{display:block}.report-hero-main span{font-size:.72rem;opacity:.82}.report-hero-main strong{margin:3px 0 3px;font-size:2rem;letter-spacing:-.04em}.report-hero-main small{opacity:.82}.report-kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:15px}.report-kpi-grid>div{padding:10px;border-radius:14px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.12)}.report-kpi-grid span,.report-kpi-grid strong{display:block}.report-kpi-grid span{font-size:.62rem;opacity:.8}.report-kpi-grid strong{margin-top:3px;font-size:.82rem}.report-section{margin-top:18px;padding:17px;border-radius:20px;background:white;border:1px solid #e4ebee}.report-title-row strong,.report-title-row span{display:block}.report-title-row strong{font-size:.88rem}.report-title-row span{margin-top:4px;color:#76858d;font-size:.68rem;line-height:1.4}.report-bars{display:grid;gap:12px;margin-top:15px}.report-bar-label{display:flex;justify-content:space-between;gap:12px;margin-bottom:5px;font-size:.69rem}.report-bar-label span{color:#536670}.report-bar-label strong{font-size:.68rem}.report-bar-track{height:9px;border-radius:999px;overflow:hidden;background:#edf2f4}.report-bar-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#0fbf79,#4ed897)}.report-empty{padding:16px;border:1px dashed #d6e0e4;border-radius:14px;color:#7b8991;text-align:center;font-size:.72rem}.monthly-bars{height:190px;margin-top:18px;display:flex;align-items:flex-end;gap:9px;overflow-x:auto;padding:5px 2px 0}.month-column{min-width:58px;height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:6px;text-align:center}.month-value{font-size:.58rem;color:#526771;font-weight:800}.month-bar{height:132px;border-radius:12px;background:#edf3f5;display:flex;align-items:flex-end;overflow:hidden}.month-bar i{width:100%;min-height:5px;border-radius:10px 10px 0 0;background:linear-gradient(180deg,#35c993,#1b80d6)}.month-column>span{font-size:.62rem;color:#71818a}.future-report{display:grid;gap:8px;margin-top:14px}.future-kpi{padding:12px;border-radius:15px;background:#f7fafb;border:1px solid #ebf0f2;display:flex;justify-content:space-between;gap:12px;align-items:center}.future-kpi span{font-size:.7rem;color:#63747d}.future-kpi strong{font-size:.8rem}.future-kpi.highlight{background:#edf8f4;border-color:#d9efe7}.report-disclaimer{margin:12px 2px 0;color:#819099;font-size:.64rem;line-height:1.45}
 @media(max-width:430px){.report-kpi-grid{grid-template-columns:1fr 1fr}.report-hero-main strong{font-size:1.75rem}.future-kpi{align-items:flex-start;flex-direction:column;gap:4px}}
+
+
+/* ===== v0.5 • Integridade, estorno e backup ===== */
+.integrity-banner {
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  display: flex;
+  gap: 5px;
+  flex-direction: column;
+  border: 1px solid #dceae6;
+  border-radius: 15px;
+  background: linear-gradient(135deg,#f0faf6,#f8fbfb);
+}
+.integrity-banner strong { color:#0b7664; font-size:.78rem; }
+.integrity-banner span { color:var(--muted); font-size:.68rem; line-height:1.4; }
+.movement-clickable { width:100%; border-left:0; border-right:0; border-top:0; text-align:left; cursor:pointer; font-family:inherit; }
+.movement-row.reversed { opacity:.62; background:#f5f7f8; }
+.movement-row.reversed > b { text-decoration:line-through; }
+.movement-title-line { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+.movement-title-line em {
+  font-style:normal; font-size:.55rem; font-weight:900; letter-spacing:.07em;
+  color:#9a4e4e; background:#faeaea; border-radius:999px; padding:3px 6px;
+}
+.movement-detail-hero {
+  padding:20px; border-radius:22px; color:white;
+  background:linear-gradient(135deg,#0c7e70,#18b77c); box-shadow:0 12px 26px rgba(11,118,100,.18);
+}
+.movement-detail-hero.is-reversed { background:linear-gradient(135deg,#68777f,#8d989e); }
+.movement-detail-hero h3 { margin:8px 0 4px; }
+.movement-detail-hero > strong { display:block; font-size:2rem; letter-spacing:-.04em; margin:4px 0; }
+.movement-detail-hero > span:not(.type-chip) { display:block; font-size:.74rem; opacity:.82; }
+.reversed-badge { display:inline-block; margin-top:10px; padding:5px 8px; border-radius:999px; background:rgba(255,255,255,.18); font-size:.63rem; letter-spacing:.08em; }
+.movement-audit-card, .detail-audit-grid {
+  margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:8px;
+}
+.movement-audit-card > div, .detail-audit-grid > div {
+  padding:12px; border-radius:15px; background:#f7fafb; border:1px solid #edf1f2;
+}
+.movement-audit-card > div:last-child:nth-child(odd) { grid-column:1/-1; }
+.movement-audit-card span, .detail-audit-grid span { display:block; color:var(--muted); font-size:.65rem; }
+.movement-audit-card strong, .detail-audit-grid strong { display:block; margin-top:3px; font-size:.76rem; line-height:1.35; }
+.reversal-box, .reversal-history {
+  margin-top:16px; padding:16px; border-radius:18px; border:1px solid #f0dada; background:#fff8f8;
+}
+.reversal-box > strong, .reversal-history > strong { display:block; color:#934848; font-size:.86rem; }
+.reversal-box > span, .reversal-history > span { display:block; margin-top:4px; color:var(--muted); font-size:.7rem; line-height:1.45; }
+.reversal-box .field { margin-top:14px; }
+.reversal-history p { margin:10px 0 0; color:#584b4b; font-size:.77rem; line-height:1.5; }
+.danger-button {
+  width:100%; min-height:50px; border:0; border-radius:15px; cursor:pointer;
+  color:white; background:linear-gradient(135deg,#b84e4e,#d76560); font-weight:850;
+}
+.danger-button:disabled { opacity:.6; cursor:wait; }
+.backup-hero {
+  margin:14px 0 16px; padding:15px; display:grid; grid-template-columns:auto 1fr; gap:12px; align-items:center;
+  border-radius:18px; background:linear-gradient(135deg,#edf9f5,#f5fbfd); border:1px solid #dcebe7;
+}
+.backup-shield { width:44px;height:44px;border-radius:14px;display:grid;place-items:center;color:white;background:linear-gradient(135deg,#0b8f6d,#32ca87);font-weight:900; }
+.backup-hero strong,.backup-hero span{display:block}.backup-hero strong{font-size:.84rem}.backup-hero span{margin-top:4px;color:var(--muted);font-size:.69rem;line-height:1.45}
+.export-option {
+  width:100%; min-height:70px; margin:9px 0; padding:10px; border:1px solid #e5ecee; border-radius:18px;
+  display:grid; grid-template-columns:auto 1fr auto; gap:11px; align-items:center; text-align:left; cursor:pointer; background:white;
+}
+.export-option .action-icon { font-size:.68rem; font-weight:900; }
+.export-option span:nth-child(2) strong,.export-option span:nth-child(2) small{display:block}.export-option strong{font-size:.82rem}.export-option small{margin-top:3px;color:var(--muted);font-size:.68rem;line-height:1.35}.export-option>b{color:#718089;font-size:1.1rem}
+.backup-note { margin:14px 2px 0; color:var(--muted); font-size:.68rem; line-height:1.5; }
+@media(max-width:430px){.movement-audit-card,.detail-audit-grid{grid-template-columns:1fr}.movement-audit-card>div:last-child:nth-child(odd){grid-column:auto}}

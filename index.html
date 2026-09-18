@@ -332,6 +332,7 @@
       <h3 id="moreTitle">Mais</h3>
       <button id="projectSettingsButton" class="simple-option">Projeto / imóvel <span>›</span></button>
       <button id="reportsButton" class="simple-option">Relatórios <span>›</span></button>
+      <button id="backupButton" class="simple-option">Backup e exportação <span>›</span></button>
       <button class="simple-option" data-coming-soon>Configurações <span>›</span></button>
       <button id="logoutButton" class="simple-option danger">Sair <span>→</span></button>
     </div>
@@ -526,6 +527,32 @@
       <div class="sheet-handle"></div>
       <h3 id="movementsModalTitle">Movimentações</h3>
       <div id="movementsList" class="movements-list"></div>
+    </div>
+  </div>
+
+  <!-- DETALHE / ESTORNO DE MOVIMENTAÇÃO -->
+  <div id="movementDetailModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="movementDetailTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <div id="movementDetailContent"></div>
+    </div>
+  </div>
+
+  <!-- BACKUP / EXPORTAÇÃO -->
+  <div id="backupModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="backupModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <p class="section-kicker">SEGURANÇA DOS DADOS</p>
+      <h3 id="backupModalTitle">Backup e exportação</h3>
+      <div class="backup-hero">
+        <div class="backup-shield">✓</div>
+        <div><strong>Seu histórico continua seu</strong><span>Exporte periodicamente uma cópia independente do Firebase. Estornos também permanecem no arquivo.</span></div>
+      </div>
+      <button id="exportJsonButton" class="export-option" type="button"><span class="action-icon green">{ }</span><span><strong>Backup completo em JSON</strong><small>Projeto, membros, contratos, parcelas, reservas e movimentações.</small></span><b>↓</b></button>
+      <button id="exportCsvButton" class="export-option" type="button"><span class="action-icon blue">CSV</span><span><strong>Movimentações em CSV</strong><small>Compatível com Excel; inclui lançamentos ativos e estornados.</small></span><b>↓</b></button>
+      <p class="backup-note">Recomendação: gere um backup após lançamentos importantes e antes de mudanças estruturais no aplicativo.</p>
     </div>
   </div>
 

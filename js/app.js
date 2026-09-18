@@ -21,6 +21,9 @@ import {
   loadActiveProject,
   loadFinancialData,
   recordPayment,
+  reverseExpense,
+  reversePayment,
+  reverseReserveContribution,
   updateProject
 } from "./data.js";
 
@@ -34,6 +37,7 @@ let financial = emptyFinancial();
 let toastTimer;
 let preselectedContractId = null;
 let preselectedInstallmentId = null;
+let selectedMovement = null;
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const compactBrl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -97,21 +101,25 @@ function renderIdentity(user) {
   $("#expenseRegisteredBy").textContent=firstName;
 }
 
-function contractPayments(contractId) { return financial.payments.filter(item => item.contractId === contractId); }
+function contractPayments(contractId) { return activePayments().filter(item => item.contractId === contractId); }
 function contractPaid(contractId) { return contractPayments(contractId).reduce((s,p)=>s+Number(p.amount||0),0); }
 function reserveById(id) { return financial.reserves.find(item=>item.id===id); }
 function contractById(id) { return financial.contracts.find(item=>item.id===id); }
+function isActiveRecord(item) { return item?.status !== "reversed"; }
+function activePayments() { return financial.payments.filter(isActiveRecord); }
+function activeExpenses() { return financial.expenses.filter(isActiveRecord); }
+function activeReserveTransactions() { return financial.reserveTransactions.filter(isActiveRecord); }
 
 function calculateSummary() {
-  const paymentsTotal = financial.payments.reduce((s,p)=>s+Number(p.amount||0),0);
-  const expensesTotal = financial.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
+  const paymentsTotal = activePayments().reduce((s,p)=>s+Number(p.amount||0),0);
+  const expensesTotal = activeExpenses().reduce((s,e)=>s+Number(e.amount||0),0);
   const reserveBalance = financial.reserves.reduce((s,r)=>s+Number(r.currentBalance||0),0);
-  const additionalFromPayments = financial.payments.reduce((sum,p) => {
+  const additionalFromPayments = activePayments().reduce((sum,p) => {
     if (p.costTreatment === "additional") return sum + Number(p.amount || 0);
     if (p.costTreatment === "financing") return sum + Number(p.financingAdditionalAmount || 0);
     return sum;
   }, 0);
-  const additionalExpenses = financial.expenses.filter(e=>e.countInRealCost !== false).reduce((s,e)=>s+Number(e.amount||0),0);
+  const additionalExpenses = activeExpenses().filter(e=>e.countInRealCost !== false).reduce((s,e)=>s+Number(e.amount||0),0);
   const additionalCosts = additionalFromPayments + additionalExpenses;
   const propertyValue = Number(currentProject?.propertyValue||0);
   const realCost = propertyValue + additionalCosts;
@@ -119,9 +127,9 @@ function calculateSummary() {
 
   const contributions = Object.fromEntries(currentMembers.map(m=>[m.id,0]));
   const addShares = shares => Object.entries(shares||{}).forEach(([uid,value]) => { contributions[uid]=(contributions[uid]||0)+Number(value||0); });
-  financial.payments.filter(p=>!p.sourceReserveId).forEach(p=>addShares(p.shares));
-  financial.expenses.filter(e=>!e.sourceReserveId).forEach(e=>addShares(e.shares));
-  financial.reserveTransactions.filter(t=>t.type === "contribution").forEach(t=>addShares(t.shares));
+  activePayments().filter(p=>!p.sourceReserveId).forEach(p=>addShares(p.shares));
+  activeExpenses().filter(e=>!e.sourceReserveId).forEach(e=>addShares(e.shares));
+  activeReserveTransactions().filter(t=>t.type === "contribution").forEach(t=>addShares(t.shares));
 
   return { propertyValue, additionalCosts, realCost, employedCapital, paymentsTotal, expensesTotal, reserveBalance, contributions };
 }
@@ -416,15 +424,155 @@ function openReserveDetail(id) {
   openModal($("#contractDetailModal"));
 }
 
-function renderMovements() {
+function allMovementRecords() {
   const movements=[];
-  financial.payments.forEach(p=>{ const c=contractById(p.contractId); movements.push({date:p.paymentDate,label:c?.name||'Pagamento',detail:contractById(p.contractId)?.type==='financing'?`Financiamento • encargos ${currency(p.financingAdditionalAmount||0)}`:(p.installmentId?'Parcela':'Pagamento recorrente'),amount:p.amount,kind:'payment',registeredBy:p.registeredBy,sourceReserveId:p.sourceReserveId,shares:p.shares}); });
-  financial.expenses.forEach(e=>movements.push({date:e.date,label:e.description,detail:e.category,amount:e.amount,kind:'expense',registeredBy:e.registeredBy,sourceReserveId:e.sourceReserveId,shares:e.shares}));
-  financial.reserveTransactions.filter(t=>t.type==='contribution').forEach(t=>{ const r=reserveById(t.reserveId); movements.push({date:t.date,label:r?.name||'Reserva',detail:'Aporte em reserva',amount:t.amount,kind:'reserve',registeredBy:t.registeredBy,shares:t.shares}); });
-  movements.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  financial.payments.forEach(p=>{
+    const c=contractById(p.contractId);
+    movements.push({
+      id:p.id,
+      date:p.paymentDate,
+      label:c?.name||'Pagamento',
+      detail:c?.type==='financing'?`Financiamento • encargos ${currency(p.financingAdditionalAmount||0)}`:(p.installmentId?'Parcela':'Pagamento recorrente'),
+      amount:p.amount,
+      kind:'payment',
+      registeredBy:p.registeredBy,
+      sourceReserveId:p.sourceReserveId,
+      shares:p.shares,
+      status:p.status||'active',
+      reversedBy:p.reversedBy,
+      reversedAt:p.reversedAt,
+      reversalReason:p.reversalReason,
+      raw:p
+    });
+  });
+  financial.expenses.forEach(e=>movements.push({
+    id:e.id,date:e.date,label:e.description,detail:e.category,amount:e.amount,kind:'expense',registeredBy:e.registeredBy,
+    sourceReserveId:e.sourceReserveId,shares:e.shares,status:e.status||'active',reversedBy:e.reversedBy,reversedAt:e.reversedAt,reversalReason:e.reversalReason,raw:e
+  }));
+  financial.reserveTransactions.filter(t=>t.type==='contribution').forEach(t=>{
+    const r=reserveById(t.reserveId);
+    movements.push({id:t.id,date:t.date,label:r?.name||'Reserva',detail:'Aporte em reserva',amount:t.amount,kind:'reserve',registeredBy:t.registeredBy,shares:t.shares,status:t.status||'active',reversedBy:t.reversedBy,reversedAt:t.reversedAt,reversalReason:t.reversalReason,raw:t});
+  });
+  return movements.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+}
+
+function renderMovements() {
+  const movements=allMovementRecords();
   const box=$("#movementsList");
   if(!movements.length){box.innerHTML='<div class="big-empty"><strong>Nenhuma movimentação ainda</strong><span>Pagamentos, despesas e aportes aparecerão aqui.</span></div>';return;}
-  box.innerHTML=movements.map(m=>{ const paidBy=m.sourceReserveId?`Reserva: ${escapeHtml(reserveById(m.sourceReserveId)?.name||'')}`:Object.keys(m.shares||{}).map(memberName).join(' + '); return `<article class="movement-row"><div class="movement-icon ${m.kind}">${m.kind==='payment'?'✓':m.kind==='expense'?'$':'◎'}</div><div><strong>${escapeHtml(m.label)}</strong><span>${dateBR(m.date)} • ${escapeHtml(m.detail)} • ${escapeHtml(paidBy||'')}</span><small>Registrado por ${escapeHtml(memberName(m.registeredBy))}</small></div><b>${currency(m.amount)}</b></article>`; }).join('');
+  box.innerHTML=`<div class="integrity-banner"><strong>Histórico protegido</strong><span>Lançamentos não são apagados. Correções ficam registradas por estorno.</span></div>` + movements.map(m=>{
+    const paidBy=m.sourceReserveId?`Reserva: ${reserveById(m.sourceReserveId)?.name||''}`:Object.keys(m.shares||{}).map(memberName).join(' + ');
+    const reversed=m.status==='reversed';
+    return `<button class="movement-row movement-clickable ${reversed?'reversed':''}" data-movement-detail="${m.kind}|${m.id}"><div class="movement-icon ${m.kind}">${reversed?'↶':m.kind==='payment'?'✓':m.kind==='expense'?'$':'◎'}</div><div><div class="movement-title-line"><strong>${escapeHtml(m.label)}</strong>${reversed?'<em>ESTORNADO</em>':''}</div><span>${dateBR(m.date)} • ${escapeHtml(m.detail)} • ${escapeHtml(paidBy||'')}</span><small>${reversed?'Estornado por '+escapeHtml(memberName(m.reversedBy)):'Registrado por '+escapeHtml(memberName(m.registeredBy))}</small></div><b>${currency(m.amount)}</b></button>`;
+  }).join('');
+}
+
+function timestampBR(value) {
+  try {
+    const d=value?.toDate ? value.toDate() : null;
+    return d ? d.toLocaleString('pt-BR') : '—';
+  } catch { return '—'; }
+}
+
+function openMovementDetail(kind,id) {
+  const movement=allMovementRecords().find(item=>item.kind===kind&&item.id===id);
+  if(!movement) return;
+  selectedMovement=movement;
+  const source=movement.sourceReserveId?`Reserva: ${reserveById(movement.sourceReserveId)?.name||'—'}`:(Object.entries(movement.shares||{}).map(([uid,value])=>`${memberName(uid)}: ${currency(value)}`).join(' • ')||'—');
+  const reversed=movement.status==='reversed';
+  const extra=kind==='payment'&&contractById(movement.raw.contractId)?.type==='financing'
+    ? `<div class="detail-audit-grid"><div><span>Amortização</span><strong>${currency(movement.raw.principalAmount||0)}</strong></div><div><span>Juros/encargos</span><strong>${currency(movement.raw.financingAdditionalAmount||0)}</strong></div></div>` : '';
+  $("#movementDetailContent").innerHTML=`
+    <div class="movement-detail-hero ${reversed?'is-reversed':''}">
+      <span class="type-chip">${kind==='payment'?'PAGAMENTO':kind==='expense'?'DESPESA':'APORTE'}</span>
+      <h3 id="movementDetailTitle">${escapeHtml(movement.label)}</h3>
+      <strong>${currency(movement.amount)}</strong>
+      <span>${dateBR(movement.date)} • ${escapeHtml(movement.detail)}</span>
+      ${reversed?'<b class="reversed-badge">ESTORNADO</b>':''}
+    </div>
+    ${extra}
+    <div class="movement-audit-card">
+      <div><span>Origem / pagador</span><strong>${escapeHtml(source)}</strong></div>
+      <div><span>Registrado por</span><strong>${escapeHtml(memberName(movement.registeredBy))}</strong></div>
+      ${movement.raw.notes?`<div><span>Observação</span><strong>${escapeHtml(movement.raw.notes)}</strong></div>`:''}
+    </div>
+    ${reversed?`
+      <div class="reversal-history"><strong>Estorno registrado</strong><span>Por ${escapeHtml(memberName(movement.reversedBy))} • ${timestampBR(movement.reversedAt)}</span><p>${escapeHtml(movement.reversalReason||'Sem motivo informado')}</p></div>
+    `:`
+      <div class="reversal-box">
+        <strong>Precisa corrigir este lançamento?</strong>
+        <span>Para preservar o histórico, o lançamento original será mantido como estornado. Depois você poderá registrar o valor correto.</span>
+        <label class="field"><span>Motivo do estorno</span><div class="field-box"><input id="reversalReason" type="text" maxlength="180" placeholder="Ex.: valor lançado incorretamente"></div></label>
+        <button id="reverseMovementButton" class="danger-button" type="button">Estornar lançamento</button>
+      </div>
+    `}`;
+  openModal($("#movementDetailModal"));
+}
+
+async function reverseSelectedMovement() {
+  if(!selectedMovement||!currentProject||!currentUser) return;
+  const reason=$("#reversalReason")?.value||'';
+  const button=$("#reverseMovementButton");
+  setButtonLoading(button,true,'Estornar lançamento','Estornando...');
+  try {
+    if(selectedMovement.kind==='payment') {
+      const linked=financial.reserveTransactions.find(t=>t.linkedPaymentId===selectedMovement.id&&t.status!=='reversed');
+      await reversePayment(currentProject.id,selectedMovement.id,linked?.id||null,reason,currentUser);
+    } else if(selectedMovement.kind==='expense') {
+      const linked=financial.reserveTransactions.find(t=>t.linkedExpenseId===selectedMovement.id&&t.status!=='reversed');
+      await reverseExpense(currentProject.id,selectedMovement.id,linked?.id||null,reason,currentUser);
+    } else {
+      await reverseReserveContribution(currentProject.id,selectedMovement.id,reason,currentUser);
+    }
+    await refreshFinancial();
+    closeModal($("#movementDetailModal"));
+    renderMovements();
+    showToast('Estorno concluído e preservado no histórico.','success');
+  } catch(err) {
+    console.error(err);
+    showToast(err.message||'Não foi possível estornar este lançamento.','error');
+  } finally {
+    setButtonLoading(button,false,'Estornar lançamento');
+  }
+}
+
+function csvCell(value) {
+  const text=String(value??'');
+  return `"${text.replaceAll('"','""')}"`;
+}
+
+function downloadBlob(filename,content,type) {
+  const blob=new Blob([content],{type});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+function backupDateStamp() { return todayISO().replaceAll('-',''); }
+
+function exportJsonBackup() {
+  const payload={
+    schemaVersion:'0.5',
+    generatedAt:new Date().toISOString(),
+    project:currentProject,
+    members:currentMembers,
+    data:financial,
+    note:'Registros estornados são mantidos propositalmente para auditoria.'
+  };
+  downloadBlob(`nosso-ape-backup-${backupDateStamp()}.json`,JSON.stringify(payload,null,2),'application/json;charset=utf-8');
+  showToast('Backup JSON gerado.','success');
+}
+
+function exportCsvMovements() {
+  const header=['Tipo','Data','Descrição','Detalhe','Valor','Origem/Pagadores','Registrado por','Status','Estornado por','Motivo do estorno','ID'];
+  const rows=allMovementRecords().map(m=>{
+    const source=m.sourceReserveId?`Reserva: ${reserveById(m.sourceReserveId)?.name||''}`:Object.entries(m.shares||{}).map(([uid,value])=>`${memberName(uid)}: ${currency(value)}`).join(' + ');
+    return [m.kind,m.date,m.label,m.detail,Number(m.amount||0).toFixed(2),source,memberName(m.registeredBy),m.status==='reversed'?'ESTORNADO':'ATIVO',m.reversedBy?memberName(m.reversedBy):'',m.reversalReason||'',m.id];
+  });
+  const csv='\ufeff'+[header,...rows].map(row=>row.map(csvCell).join(';')).join('\r\n');
+  downloadBlob(`nosso-ape-movimentacoes-${backupDateStamp()}.csv`,csv,'text/csv;charset=utf-8');
+  showToast('CSV de movimentações gerado.','success');
 }
 
 
@@ -443,17 +591,17 @@ function calculateReportData(){
   const summary=calculateSummary();
   const capitalByCategory={}; const extraByCategory={}; const monthly={};
 
-  financial.payments.forEach(p=>{
+  activePayments().forEach(p=>{
     const c=contractById(p.contractId); const category=c?.category||'Outros';
     if(!p.sourceReserveId){ addToBucket(capitalByCategory,category,p.amount); if(p.paymentDate) addToBucket(monthly,p.paymentDate.slice(0,7),p.amount); }
     if(p.costTreatment==='additional') addToBucket(extraByCategory,category,p.amount);
     if(p.costTreatment==='financing') addToBucket(extraByCategory,'Financiamento',p.financingAdditionalAmount||0);
   });
-  financial.expenses.forEach(e=>{
+  activeExpenses().forEach(e=>{
     if(!e.sourceReserveId){ addToBucket(capitalByCategory,e.category||'Outros',e.amount); if(e.date) addToBucket(monthly,e.date.slice(0,7),e.amount); }
     if(e.countInRealCost!==false) addToBucket(extraByCategory,e.category||'Outros',e.amount);
   });
-  financial.reserveTransactions.filter(t=>t.type==='contribution').forEach(t=>{
+  activeReserveTransactions().filter(t=>t.type==='contribution').forEach(t=>{
     const r=reserveById(t.reserveId); addToBucket(capitalByCategory,r?.category||'Reservas',t.amount); if(t.date) addToBucket(monthly,t.date.slice(0,7),t.amount);
   });
 
@@ -496,7 +644,7 @@ function celebrate(name, copy='Mais uma etapa do nosso projeto concluída.') {
 
 function checkCelebration(before, after) {
   for(const reserve of after.reserves){ const old=before.reserves.find(r=>r.id===reserve.id); const was=old&&Number(old.contributedTotal||0)>=Number(old.targetValue||0); const is=Number(reserve.contributedTotal||0)>=Number(reserve.targetValue||0); if(is&&!was){celebrate(reserve.name,'A meta financeira foi alcançada. O valor continua rastreado mesmo quando for utilizado.'); return;} }
-  for(const c of after.contracts.filter(x=>['installment','financing'].includes(x.type))){ const oldC=before.contracts.find(x=>x.id===c.id); if(!oldC) continue; if(c.type==='financing'){ const oldIns=before.installmentsByContract[c.id]||[]; const newIns=after.installmentsByContract[c.id]||[]; const wasDone=oldIns.length>0&&oldIns.every(i=>i.status==='paid'); const isDone=newIns.length>0&&newIns.every(i=>i.status==='paid'); if(isDone&&!wasDone){celebrate(c.name,'Todas as prestações do financiamento foram registradas como quitadas.'); return;} } else { const oldPaid=before.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); const newPaid=after.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); if(oldPaid+0.009<Number(c.totalValue||0) && newPaid+0.009>=Number(c.totalValue||0)){celebrate(c.name,'Todas as parcelas deste compromisso foram concluídas.'); return;} } }
+  for(const c of after.contracts.filter(x=>['installment','financing'].includes(x.type))){ const oldC=before.contracts.find(x=>x.id===c.id); if(!oldC) continue; if(c.type==='financing'){ const oldIns=before.installmentsByContract[c.id]||[]; const newIns=after.installmentsByContract[c.id]||[]; const wasDone=oldIns.length>0&&oldIns.every(i=>i.status==='paid'); const isDone=newIns.length>0&&newIns.every(i=>i.status==='paid'); if(isDone&&!wasDone){celebrate(c.name,'Todas as prestações do financiamento foram registradas como quitadas.'); return;} } else { const oldPaid=before.payments.filter(p=>p.status!=='reversed'&&p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); const newPaid=after.payments.filter(p=>p.status!=='reversed'&&p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); if(oldPaid+0.009<Number(c.totalValue||0) && newPaid+0.009>=Number(c.totalValue||0)){celebrate(c.name,'Todas as parcelas deste compromisso foram concluídas.'); return;} } }
 }
 
 // --- Auth ---
@@ -541,12 +689,17 @@ $("#quickPayment").addEventListener('click',()=>{closeModal($("#quickAddModal"))
 $("#quickExpense").addEventListener('click',()=>{closeModal($("#quickAddModal"));openExpense();});
 $("#quickReserve").addEventListener('click',()=>{closeModal($("#quickAddModal"));openReserve();});
 $("#contractsNav").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
-$("#movementsNav").addEventListener('click',()=>{renderMovements();openModal($("#movementsModal"));});$("#reportsButton").addEventListener('click',()=>{renderReports();closeModal($("#moreModal"));openModal($("#reportsModal"));});$("#contributionHistoryButton").addEventListener('click',()=>{renderReports();openModal($("#reportsModal"));});$("#dashboardContractsButton").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
+$("#movementsNav").addEventListener('click',()=>{renderMovements();openModal($("#movementsModal"));});$("#reportsButton").addEventListener('click',()=>{renderReports();closeModal($("#moreModal"));openModal($("#reportsModal"));});
+$("#backupButton").addEventListener('click',()=>{closeModal($("#moreModal"));openModal($("#backupModal"));});
+$("#exportJsonButton").addEventListener('click',exportJsonBackup);
+$("#exportCsvButton").addEventListener('click',exportCsvMovements);$("#contributionHistoryButton").addEventListener('click',()=>{renderReports();openModal($("#reportsModal"));});$("#dashboardContractsButton").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
 $("#newContractFromList").addEventListener('click',()=>{closeModal($("#contractsModal"));prepareContractForm();openModal($("#contractModal"));});
 $("#createReserveFromReserveModal").addEventListener('click',()=>{closeModal($("#reserveModal"));prepareContractForm('reserve');openModal($("#contractModal"));});
 $("#closeCelebration").addEventListener('click',()=>closeModal($("#celebrationModal")));
 
 document.addEventListener('click',e=>{
+  const movement=e.target.closest('[data-movement-detail]'); if(movement){const [kind,id]=movement.dataset.movementDetail.split('|');openMovementDetail(kind,id);return;}
+  const reverseBtn=e.target.closest('#reverseMovementButton'); if(reverseBtn){reverseSelectedMovement();return;}
   const contract=e.target.closest('[data-contract-detail]'); if(contract){closeModal($("#contractsModal"));openContractDetail(contract.dataset.contractDetail);return;}
   const reserve=e.target.closest('[data-reserve-detail]'); if(reserve){closeModal($("#contractsModal"));openReserveDetail(reserve.dataset.reserveDetail);return;}
   const pay=e.target.closest('[data-pay-contract]'); if(pay){closeModal($("#contractDetailModal"));openPaymentFor(pay.dataset.payContract);return;}
