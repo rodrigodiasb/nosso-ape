@@ -32,7 +32,7 @@ service cloud.firestore {
 
       match /contracts/{contractId} {
         allow read: if isMember(projectId);
-        allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid && request.resource.data.type in ["installment", "recurring"];
+        allow create: if isMember(projectId) && request.resource.data.createdBy == request.auth.uid && request.resource.data.type in ["installment", "recurring", "financing"];
         allow update: if isMember(projectId) && request.resource.data.createdBy == resource.data.createdBy && request.resource.data.type == resource.data.type;
         allow delete: if false;
 

@@ -10,6 +10,7 @@ import {
 import {
   addReserveContribution,
   createExpense,
+  createFinancingContract,
   createInstallmentContract,
   createInvite,
   createProject,
@@ -105,7 +106,11 @@ function calculateSummary() {
   const paymentsTotal = financial.payments.reduce((s,p)=>s+Number(p.amount||0),0);
   const expensesTotal = financial.expenses.reduce((s,e)=>s+Number(e.amount||0),0);
   const reserveBalance = financial.reserves.reduce((s,r)=>s+Number(r.currentBalance||0),0);
-  const additionalFromPayments = financial.payments.filter(p=>p.costTreatment === "additional").reduce((s,p)=>s+Number(p.amount||0),0);
+  const additionalFromPayments = financial.payments.reduce((sum,p) => {
+    if (p.costTreatment === "additional") return sum + Number(p.amount || 0);
+    if (p.costTreatment === "financing") return sum + Number(p.financingAdditionalAmount || 0);
+    return sum;
+  }, 0);
   const additionalExpenses = financial.expenses.filter(e=>e.countInRealCost !== false).reduce((s,e)=>s+Number(e.amount||0),0);
   const additionalCosts = additionalFromPayments + additionalExpenses;
   const propertyValue = Number(currentProject?.propertyValue||0);
@@ -139,6 +144,11 @@ function contractProgress(contract) {
     const total=Number(contract.totalValue||0);
     return { paid, total, pct: total>0?clamp(paid/total*100):0 };
   }
+  if (contract.type === "financing") {
+    const principal=Number(contract.financedPrincipal||contract.totalValue||0);
+    const principalPaid=Number(contract.principalPaid||0);
+    return { paid:contractPaid(contract.id), total:principal, principalPaid, pct:principal>0?clamp(principalPaid/principal*100):0 };
+  }
   const paid=contractPaid(contract.id);
   return { paid, total:null, pct:0 };
 }
@@ -160,14 +170,19 @@ function renderDashboardContracts() {
     const p=contractProgress(item);
     const installments=financial.installmentsByContract[item.id]||[];
     const paidCount=installments.filter(x=>x.status==='paid').length;
-    const suffix=item.type==='installment'?`${paidCount} / ${item.installmentsCount}`:'Recorrente';
-    return `<button class="dashboard-contract-row" data-contract-detail="${item.id}"><div class="contract-icon green">▣</div><div class="contract-body"><div class="contract-title"><strong>${escapeHtml(item.name)}</strong><span>${suffix}</span></div>${item.type==='installment'?`<div class="mini-progress"><i style="width:${p.pct}%"></i></div><div class="contract-meta"><span>${currency(p.paid)} pagos</span><span>${p.pct.toFixed(0)}%</span></div>`:`<div class="contract-meta"><span>${currency(p.paid)} pagos até agora</span><span>${escapeHtml(item.category||'')}</span></div>`}</div></button>`;
+    const suffix=item.type==='installment'||item.type==='financing'?`${paidCount} / ${item.installmentsCount}`:'Recorrente';
+    const progressBlock=item.type==='installment'
+      ? `<div class="mini-progress"><i style="width:${p.pct}%"></i></div><div class="contract-meta"><span>${currency(p.paid)} pagos</span><span>${p.pct.toFixed(0)}%</span></div>`
+      : item.type==='financing'
+        ? `<div class="mini-progress blue-bar"><i style="width:${p.pct}%"></i></div><div class="contract-meta"><span>${currency(p.principalPaid)} amortizados</span><span>${p.pct.toFixed(0)}% do principal</span></div>`
+        : `<div class="contract-meta"><span>${currency(p.paid)} pagos até agora</span><span>${escapeHtml(item.category||'')}</span></div>`;
+    return `<button class="dashboard-contract-row" data-contract-detail="${item.id}"><div class="contract-icon ${item.type==='financing'?'blue':'green'}">▣</div><div class="contract-body"><div class="contract-title"><strong>${escapeHtml(item.name)}</strong><span>${suffix}</span></div>${progressBlock}</div></button>`;
   }).join('');
 }
 
 function nextDueInstallment() {
   const candidates=[];
-  financial.contracts.filter(c=>c.type==='installment').forEach(contract=>{
+  financial.contracts.filter(c=>['installment','financing'].includes(c.type)).forEach(contract=>{
     (financial.installmentsByContract[contract.id]||[]).filter(i=>i.status!=='paid').forEach(i=>candidates.push({contract, installment:i}));
   });
   candidates.sort((a,b)=>(a.installment.dueDate||'9999').localeCompare(b.installment.dueDate||'9999'));
@@ -182,11 +197,14 @@ function renderNextPayment() {
     card.innerHTML='<div class="next-payment-icon">✓</div><div><span class="section-kicker">PRÓXIMOS COMPROMISSOS</span><strong>Nenhum vencimento pendente</strong><small>Quando houver parcelas futuras, elas aparecerão aqui.</small></div><b>—</b>';
     return;
   }
-  const remaining=Math.max(0,Number(next.installment.expectedValue||0)-Number(next.installment.paidValue||0));
+  const remaining=next.contract.type==='financing'
+    ? Number(next.installment.expectedValue||0)
+    : Math.max(0,Number(next.installment.expectedValue||0)-Number(next.installment.paidValue||0));
   const overdue=next.installment.dueDate < todayISO();
   card.classList.toggle('muted-payment',false);
   card.classList.toggle('overdue-card',overdue);
-  card.innerHTML=`<div class="next-payment-icon">${next.installment.number}</div><div><span class="section-kicker">${overdue?'PAGAMENTO VENCIDO':'PRÓXIMO PAGAMENTO'}</span><strong>${escapeHtml(next.contract.name)} • ${String(next.installment.number).padStart(2,'0')}/${next.contract.installmentsCount}</strong><small>${dateBR(next.installment.dueDate)}</small></div><b>${currency(remaining)}</b>`;
+  const amountLabel=next.contract.type==='financing' && remaining<=0 ? 'A confirmar' : currency(remaining);
+  card.innerHTML=`<div class="next-payment-icon">${next.installment.number}</div><div><span class="section-kicker">${overdue?'PAGAMENTO VENCIDO':'PRÓXIMO PAGAMENTO'}</span><strong>${escapeHtml(next.contract.name)} • ${String(next.installment.number).padStart(2,'0')}/${next.contract.installmentsCount}</strong><small>${dateBR(next.installment.dueDate)}</small></div><b>${amountLabel}</b>`;
   card.onclick=()=>openPaymentFor(next.contract.id,next.installment.id);
 }
 
@@ -255,24 +273,69 @@ function sourceReserveId(selectValue) { return selectValue?.startsWith('reserve:
 
 function populatePaymentContractSelect() {
   const select=$("#paymentContract");
-  select.innerHTML='<option value="">Selecione...</option>'+financial.contracts.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} — ${c.type==='installment'?'parcelado':'recorrente'}</option>`).join('');
+  select.innerHTML='<option value="">Selecione...</option>'+financial.contracts.map(c=>`<option value="${c.id}">${escapeHtml(c.name)} — ${c.type==='installment'?'parcelado':c.type==='financing'?'financiamento':'recorrente'}</option>`).join('');
   if (preselectedContractId) select.value=preselectedContractId;
   updatePaymentInstallments();
 }
 function updatePaymentInstallments() {
   const contract=contractById($("#paymentContract").value);
   const field=$("#paymentInstallmentField"); const select=$("#paymentInstallment");
-  if (!contract || contract.type!=='installment') { field.classList.add('hidden'); select.innerHTML=''; if (contract) $('#paymentAmount').value=''; return; }
+  const isInstallment=contract && ["installment","financing"].includes(contract.type);
+
+  if (!isInstallment) {
+    field.classList.add('hidden'); select.innerHTML='';
+    if (contract) $('#paymentAmount').value='';
+    toggleFinancingPaymentFields(contract);
+    return;
+  }
+
   const installments=(financial.installmentsByContract[contract.id]||[]).filter(i=>i.status!=='paid');
-  select.innerHTML=installments.map(i=>{ const remaining=Math.max(0,Number(i.expectedValue||0)-Number(i.paidValue||0)); return `<option value="${i.id}">${String(i.number).padStart(2,'0')}/${contract.installmentsCount} • ${dateBR(i.dueDate)} • resta ${currency(remaining)}</option>`; }).join('');
+  select.innerHTML=installments.map(i=>{
+    const label=contract.type==='financing'
+      ? (Number(i.expectedValue||0)>0 ? `estimada ${currency(i.expectedValue)}` : 'valor a confirmar')
+      : `resta ${currency(Math.max(0,Number(i.expectedValue||0)-Number(i.paidValue||0)))}`;
+    return `<option value="${i.id}">${String(i.number).padStart(2,'0')}/${contract.installmentsCount} • ${dateBR(i.dueDate)} • ${label}</option>`;
+  }).join('');
   if (preselectedInstallmentId) select.value=preselectedInstallmentId;
   field.classList.remove('hidden');
   fillPaymentAmountFromInstallment();
+  toggleFinancingPaymentFields(contract);
 }
+
+function toggleFinancingPaymentFields(contract=contractById($("#paymentContract").value)) {
+  const isFinancing=contract?.type==='financing';
+  $("#financingPaymentFields").classList.toggle('hidden',!isFinancing);
+  if (!isFinancing) {
+    $("#paymentPrincipalAmount").value='0';
+    $("#paymentFinancingAdditional").value='0';
+    $("#financingComponentsSum").textContent=currency(0);
+  } else {
+    updateFinancingComponentsSum();
+  }
+}
+
+function updateFinancingComponentsSum() {
+  const principal=Number($("#paymentPrincipalAmount").value)||0;
+  const additional=Number($("#paymentFinancingAdditional").value)||0;
+  const total=principal+additional;
+  $("#financingComponentsSum").textContent=currency(total);
+  const paid=Number($("#paymentAmount").value)||0;
+  $("#financingComponentsSum").classList.toggle('sum-mismatch',Math.round(total*100)!==Math.round(paid*100));
+}
+
 function fillPaymentAmountFromInstallment() {
-  const contract=contractById($("#paymentContract").value); if(!contract||contract.type!=='installment') return;
+  const contract=contractById($("#paymentContract").value);
+  if(!contract||!["installment","financing"].includes(contract.type)) return;
   const installment=(financial.installmentsByContract[contract.id]||[]).find(i=>i.id===$("#paymentInstallment").value);
-  if (installment) $("#paymentAmount").value=Math.max(0,Number(installment.expectedValue||0)-Number(installment.paidValue||0)).toFixed(2);
+  if (!installment) return;
+  if (contract.type==='financing') {
+    $("#paymentAmount").value=Number(installment.expectedValue||0)>0 ? Number(installment.expectedValue).toFixed(2) : '';
+    $("#paymentPrincipalAmount").value='0';
+    $("#paymentFinancingAdditional").value='0';
+    updateFinancingComponentsSum();
+  } else {
+    $("#paymentAmount").value=Math.max(0,Number(installment.expectedValue||0)-Number(installment.paidValue||0)).toFixed(2);
+  }
 }
 function openPaymentFor(contractId=null,installmentId=null) {
   if (!financial.contracts.length) { showToast('Cadastre primeiro um contrato.'); openModal($("#contractModal")); return; }
@@ -308,11 +371,13 @@ function prepareContractForm(type='installment') {
 function toggleContractFields() {
   const type=$("#contractType").value;
   $("#installmentFields").classList.toggle('hidden',type!=='installment');
+  $("#financingFields").classList.toggle('hidden',type!=='financing');
   $("#recurringFields").classList.toggle('hidden',type!=='recurring');
   $("#reserveFields").classList.toggle('hidden',type!=='reserve');
-  $("#costTreatmentGroup").classList.toggle('hidden',type==='reserve');
+  $("#costTreatmentGroup").classList.toggle('hidden',type==='reserve'||type==='financing');
   if (type==='recurring' && $("#contractCategory").value==='Aquisição') $("#contractCategory").value='Juros de obra';
   if (type==='recurring') $("#costTreatment").value='additional';
+  if (type==='financing') $("#contractCategory").value='Financiamento';
 }
 
 function renderContractsList() {
@@ -323,6 +388,7 @@ function renderContractsList() {
   box.innerHTML=all.map(item=>{
     if(item.type==='reserve') { const pct=item.targetValue?clamp(Number(item.contributedTotal||0)/Number(item.targetValue)*100):0; return `<button class="contract-list-card" data-reserve-detail="${item.id}"><span class="type-chip blue-chip">META</span><strong>${escapeHtml(item.name)}</strong><div class="list-progress"><i style="width:${pct}%"></i></div><small>${currency(item.contributedTotal)} de ${currency(item.targetValue)} • ${pct.toFixed(0)}%</small></button>`; }
     const p=contractProgress(item); const installments=financial.installmentsByContract[item.id]||[]; const paidCount=installments.filter(i=>i.status==='paid').length;
+    if(item.type==='financing') return `<button class="contract-list-card" data-contract-detail="${item.id}"><span class="type-chip financing-chip">FINANCIAMENTO</span><strong>${escapeHtml(item.name)}</strong><div class="list-progress blue-progress"><i style="width:${p.pct}%"></i></div><small>${paidCount}/${item.installmentsCount} prestações • ${currency(p.principalPaid)} do principal amortizado</small></button>`;
     return `<button class="contract-list-card" data-contract-detail="${item.id}"><span class="type-chip">${item.type==='installment'?'PARCELADO':'RECORRENTE'}</span><strong>${escapeHtml(item.name)}</strong>${item.type==='installment'?`<div class="list-progress"><i style="width:${p.pct}%"></i></div><small>${paidCount}/${item.installmentsCount} parcelas • ${currency(p.paid)} pagos</small>`:`<small>${currency(p.paid)} pagos até agora • ${escapeHtml(item.category)}</small>`}</button>`;
   }).join('');
 }
@@ -330,14 +396,20 @@ function renderContractsList() {
 function openContractDetail(contractId) {
   const c=contractById(contractId); if(!c) return;
   const p=contractProgress(c); const box=$("#contractDetailContent");
+
   if(c.type==='installment') {
     const installments=financial.installmentsByContract[c.id]||[];
     box.innerHTML=`<div class="detail-hero"><span class="type-chip">PARCELADO</span><h3 id="contractDetailTitle">${escapeHtml(c.name)}</h3><p>${escapeHtml(c.category)} • ${c.costTreatment==='additional'?'custo adicional':'parte do imóvel'}</p><strong>${currency(c.totalValue)}</strong><div class="list-progress large"><i style="width:${p.pct}%"></i></div><small>${currency(p.paid)} pagos • ${p.pct.toFixed(1).replace('.',',')}%</small></div><div class="detail-actions"><button class="primary-button" data-pay-contract="${c.id}">Registrar pagamento</button></div><div class="installment-list">${installments.map(i=>{ const rem=Math.max(0,Number(i.expectedValue||0)-Number(i.paidValue||0)); const status=i.status==='paid'?'Pago':i.status==='partial'?'Parcial':i.dueDate<todayISO()?'Vencido':'Futuro'; return `<button class="installment-row ${status.toLowerCase()}" data-pay-installment="${c.id}|${i.id}" ${status==='Pago'?'disabled':''}><span class="installment-number">${String(i.number).padStart(2,'0')}</span><span><strong>${dateBR(i.dueDate)}</strong><small>${status}${status!=='Pago'?` • resta ${currency(rem)}`:''}</small></span><b>${currency(i.expectedValue)}</b></button>`; }).join('')}</div>`;
+  } else if(c.type==='financing') {
+    const installments=financial.installmentsByContract[c.id]||[];
+    const remainingPrincipal=Math.max(0,Number(c.financedPrincipal||0)-Number(c.principalPaid||0));
+    box.innerHTML=`<div class="detail-hero financing-detail"><span class="type-chip financing-chip">FINANCIAMENTO</span><h3 id="contractDetailTitle">${escapeHtml(c.name)}</h3><p>Principal financiado</p><strong>${currency(c.financedPrincipal||0)}</strong><div class="list-progress large blue-progress"><i style="width:${p.pct}%"></i></div><small>${currency(c.principalPaid||0)} amortizados • ${p.pct.toFixed(1).replace('.',',')}%</small></div><div class="detail-stats"><div><span>Principal restante</span><strong>${currency(remainingPrincipal)}</strong></div><div><span>Juros/seguros/encargos pagos</span><strong>${currency(c.financingAdditionalPaid||0)}</strong></div></div><div class="detail-actions"><button class="primary-button" data-pay-contract="${c.id}">Registrar prestação</button></div><div class="installment-list">${installments.map(i=>{ const status=i.status==='paid'?'Pago':i.status==='partial'?'Parcial':i.dueDate<todayISO()?'Vencido':'Futuro'; const estimate=Number(i.expectedValue||0)>0?currency(i.expectedValue):'A confirmar'; return `<button class="installment-row ${status.toLowerCase()}" data-pay-installment="${c.id}|${i.id}" ${status==='Pago'?'disabled':''}><span class="installment-number">${String(i.number).padStart(2,'0')}</span><span><strong>${dateBR(i.dueDate)}</strong><small>${status}${Number(i.principalPaid||0)>0?` • amortizado ${currency(i.principalPaid)}`:''}</small></span><b>${estimate}</b></button>`; }).join('')}</div>`;
   } else {
     box.innerHTML=`<div class="detail-hero"><span class="type-chip">RECORRENTE</span><h3 id="contractDetailTitle">${escapeHtml(c.name)}</h3><p>${escapeHtml(c.category)} • ${c.costTreatment==='additional'?'custo adicional':'parte do imóvel'}</p><strong>${currency(p.paid)}</strong><small>Total pago até agora</small></div><div class="detail-actions"><button class="primary-button" data-pay-contract="${c.id}">Registrar novo pagamento</button></div>`;
   }
   openModal($("#contractDetailModal"));
 }
+
 function openReserveDetail(id) {
   const r=reserveById(id); if(!r) return; const pct=r.targetValue?clamp(Number(r.contributedTotal||0)/Number(r.targetValue)*100):0;
   $("#contractDetailContent").innerHTML=`<div class="detail-hero reserve-detail"><span class="type-chip blue-chip">META FINANCEIRA</span><h3 id="contractDetailTitle">${escapeHtml(r.name)}</h3><p>${escapeHtml(r.category)}</p><strong>${currency(r.contributedTotal)}</strong><div class="list-progress large"><i style="width:${pct}%"></i></div><small>${pct.toFixed(1).replace('.',',')}% de ${currency(r.targetValue)}</small></div><div class="detail-stats"><div><span>Saldo disponível</span><strong>${currency(r.currentBalance)}</strong></div><div><span>Já utilizado</span><strong>${currency(r.usedTotal)}</strong></div></div><div class="detail-actions"><button class="primary-button" data-add-reserve="${r.id}">Adicionar aporte</button></div>`;
@@ -346,13 +418,73 @@ function openReserveDetail(id) {
 
 function renderMovements() {
   const movements=[];
-  financial.payments.forEach(p=>{ const c=contractById(p.contractId); movements.push({date:p.paymentDate,label:c?.name||'Pagamento',detail:p.installmentId?'Parcela':'Pagamento recorrente',amount:p.amount,kind:'payment',registeredBy:p.registeredBy,sourceReserveId:p.sourceReserveId,shares:p.shares}); });
+  financial.payments.forEach(p=>{ const c=contractById(p.contractId); movements.push({date:p.paymentDate,label:c?.name||'Pagamento',detail:contractById(p.contractId)?.type==='financing'?`Financiamento • encargos ${currency(p.financingAdditionalAmount||0)}`:(p.installmentId?'Parcela':'Pagamento recorrente'),amount:p.amount,kind:'payment',registeredBy:p.registeredBy,sourceReserveId:p.sourceReserveId,shares:p.shares}); });
   financial.expenses.forEach(e=>movements.push({date:e.date,label:e.description,detail:e.category,amount:e.amount,kind:'expense',registeredBy:e.registeredBy,sourceReserveId:e.sourceReserveId,shares:e.shares}));
   financial.reserveTransactions.filter(t=>t.type==='contribution').forEach(t=>{ const r=reserveById(t.reserveId); movements.push({date:t.date,label:r?.name||'Reserva',detail:'Aporte em reserva',amount:t.amount,kind:'reserve',registeredBy:t.registeredBy,shares:t.shares}); });
   movements.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   const box=$("#movementsList");
   if(!movements.length){box.innerHTML='<div class="big-empty"><strong>Nenhuma movimentação ainda</strong><span>Pagamentos, despesas e aportes aparecerão aqui.</span></div>';return;}
   box.innerHTML=movements.map(m=>{ const paidBy=m.sourceReserveId?`Reserva: ${escapeHtml(reserveById(m.sourceReserveId)?.name||'')}`:Object.keys(m.shares||{}).map(memberName).join(' + '); return `<article class="movement-row"><div class="movement-icon ${m.kind}">${m.kind==='payment'?'✓':m.kind==='expense'?'$':'◎'}</div><div><strong>${escapeHtml(m.label)}</strong><span>${dateBR(m.date)} • ${escapeHtml(m.detail)} • ${escapeHtml(paidBy||'')}</span><small>Registrado por ${escapeHtml(memberName(m.registeredBy))}</small></div><b>${currency(m.amount)}</b></article>`; }).join('');
+}
+
+
+function addToBucket(map,key,value){ if(!key) key='Outros'; map[key]=(map[key]||0)+(Number(value)||0); }
+function monthLabel(key){ const [y,m]=key.split('-'); const names=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return `${names[Number(m)-1]||m}/${String(y).slice(2)}`; }
+function daysFromToday(days){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+function renderBarList(containerId,buckets,emptyText='Ainda não há dados para este gráfico.'){
+  const box=$(containerId); const items=Object.entries(buckets).sort((a,b)=>b[1]-a[1]);
+  if(!items.length){box.innerHTML=`<div class="report-empty">${emptyText}</div>`;return;}
+  const max=Math.max(...items.map(([,v])=>v),1);
+  box.innerHTML=items.map(([label,value])=>`<div class="report-bar-row"><div class="report-bar-label"><span>${escapeHtml(label)}</span><strong>${currency(value)}</strong></div><div class="report-bar-track"><i style="width:${clamp(value/max*100)}%"></i></div></div>`).join('');
+}
+
+function calculateReportData(){
+  const summary=calculateSummary();
+  const capitalByCategory={}; const extraByCategory={}; const monthly={};
+
+  financial.payments.forEach(p=>{
+    const c=contractById(p.contractId); const category=c?.category||'Outros';
+    if(!p.sourceReserveId){ addToBucket(capitalByCategory,category,p.amount); if(p.paymentDate) addToBucket(monthly,p.paymentDate.slice(0,7),p.amount); }
+    if(p.costTreatment==='additional') addToBucket(extraByCategory,category,p.amount);
+    if(p.costTreatment==='financing') addToBucket(extraByCategory,'Financiamento',p.financingAdditionalAmount||0);
+  });
+  financial.expenses.forEach(e=>{
+    if(!e.sourceReserveId){ addToBucket(capitalByCategory,e.category||'Outros',e.amount); if(e.date) addToBucket(monthly,e.date.slice(0,7),e.amount); }
+    if(e.countInRealCost!==false) addToBucket(extraByCategory,e.category||'Outros',e.amount);
+  });
+  financial.reserveTransactions.filter(t=>t.type==='contribution').forEach(t=>{
+    const r=reserveById(t.reserveId); addToBucket(capitalByCategory,r?.category||'Reservas',t.amount); if(t.date) addToBucket(monthly,t.date.slice(0,7),t.amount);
+  });
+
+  let regularRemaining=0, financingPrincipalRemaining=0, next30=0;
+  const end30=daysFromToday(30), today=todayISO();
+  financial.contracts.forEach(c=>{
+    if(c.type==='installment'){
+      (financial.installmentsByContract[c.id]||[]).filter(i=>i.status!=='paid').forEach(i=>{
+        const rem=Math.max(0,Number(i.expectedValue||0)-Number(i.paidValue||0)); regularRemaining+=rem;
+        if(i.dueDate>=today&&i.dueDate<=end30) next30+=rem;
+      });
+    } else if(c.type==='financing'){
+      financingPrincipalRemaining+=Math.max(0,Number(c.financedPrincipal||0)-Number(c.principalPaid||0));
+      (financial.installmentsByContract[c.id]||[]).filter(i=>i.status!=='paid'&&i.dueDate>=today&&i.dueDate<=end30).forEach(i=>{ next30+=Number(i.expectedValue||0); });
+    }
+  });
+  return {summary,capitalByCategory,extraByCategory,monthly,regularRemaining,financingPrincipalRemaining,next30};
+}
+
+function renderReports(){
+  const r=calculateReportData(); const s=r.summary;
+  const extraPct=s.propertyValue>0?s.additionalCosts/s.propertyValue*100:0;
+  const stillToEmploy=Math.max(0,s.realCost-s.employedCapital);
+  $("#reportHero").innerHTML=`<div class="report-hero-main"><span>Custo real conhecido</span><strong>${currency(s.realCost)}</strong><small>${extraPct.toFixed(2).replace('.',',')}% acima do valor contratado até agora</small></div><div class="report-kpi-grid"><div><span>Capital empregado</span><strong>${currency(s.employedCapital)}</strong></div><div><span>Custos adicionais</span><strong>${currency(s.additionalCosts)}</strong></div><div><span>Saldo atual em reservas</span><strong>${currency(s.reserveBalance)}</strong></div><div><span>Diferença até o custo conhecido</span><strong>${currency(stillToEmploy)}</strong></div></div>`;
+  renderBarList('#reportCategoryBars',r.capitalByCategory);
+  renderBarList('#reportAdditionalBars',r.extraByCategory,'Nenhum custo adicional reconhecido até agora.');
+
+  const months=Object.entries(r.monthly).sort((a,b)=>a[0].localeCompare(b[0])).slice(-8); const max=Math.max(...months.map(([,v])=>v),1);
+  $("#reportMonthlyBars").innerHTML=months.length?months.map(([m,v])=>`<div class="month-column"><div class="month-value">${compactCurrency(v)}</div><div class="month-bar"><i style="height:${Math.max(6,v/max*100)}%"></i></div><span>${monthLabel(m)}</span></div>`).join(''):'<div class="report-empty">Os aportes mensais aparecerão aqui.</div>';
+
+  $("#reportFuture").innerHTML=`<div class="future-kpi"><span>Parcelas comuns ainda previstas</span><strong>${currency(r.regularRemaining)}</strong></div><div class="future-kpi"><span>Principal de financiamento ainda não amortizado</span><strong>${currency(r.financingPrincipalRemaining)}</strong></div><div class="future-kpi highlight"><span>Compromissos estimados nos próximos 30 dias</span><strong>${currency(r.next30)}</strong></div>`;
 }
 
 function celebrate(name, copy='Mais uma etapa do nosso projeto concluída.') {
@@ -364,7 +496,7 @@ function celebrate(name, copy='Mais uma etapa do nosso projeto concluída.') {
 
 function checkCelebration(before, after) {
   for(const reserve of after.reserves){ const old=before.reserves.find(r=>r.id===reserve.id); const was=old&&Number(old.contributedTotal||0)>=Number(old.targetValue||0); const is=Number(reserve.contributedTotal||0)>=Number(reserve.targetValue||0); if(is&&!was){celebrate(reserve.name,'A meta financeira foi alcançada. O valor continua rastreado mesmo quando for utilizado.'); return;} }
-  for(const c of after.contracts.filter(x=>x.type==='installment')){ const oldC=before.contracts.find(x=>x.id===c.id); if(!oldC) continue; const oldPaid=before.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); const newPaid=after.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); if(oldPaid+0.009<Number(c.totalValue||0) && newPaid+0.009>=Number(c.totalValue||0)){celebrate(c.name,'Todas as parcelas deste compromisso foram concluídas.'); return;} }
+  for(const c of after.contracts.filter(x=>['installment','financing'].includes(x.type))){ const oldC=before.contracts.find(x=>x.id===c.id); if(!oldC) continue; if(c.type==='financing'){ const oldIns=before.installmentsByContract[c.id]||[]; const newIns=after.installmentsByContract[c.id]||[]; const wasDone=oldIns.length>0&&oldIns.every(i=>i.status==='paid'); const isDone=newIns.length>0&&newIns.every(i=>i.status==='paid'); if(isDone&&!wasDone){celebrate(c.name,'Todas as prestações do financiamento foram registradas como quitadas.'); return;} } else { const oldPaid=before.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); const newPaid=after.payments.filter(p=>p.contractId===c.id).reduce((s,p)=>s+Number(p.amount||0),0); if(oldPaid+0.009<Number(c.totalValue||0) && newPaid+0.009>=Number(c.totalValue||0)){celebrate(c.name,'Todas as parcelas deste compromisso foram concluídas.'); return;} } }
 }
 
 // --- Auth ---
@@ -389,11 +521,12 @@ $("#copyInviteButton").addEventListener('click',async()=>{const code=$("#created
 
 // --- Contract / reserve creation ---
 $("#contractType").addEventListener('change',toggleContractFields);
-$("#contractForm").addEventListener('submit',async e=>{e.preventDefault();const b=$("#saveContractButton");setButtonLoading(b,true,'Salvar');try{const type=$("#contractType").value;if(type==='installment')await createInstallmentContract(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,costTreatment:$("#costTreatment").value,totalValue:$("#contractTotal").value,installmentsCount:$("#contractInstallments").value,firstDueDate:$("#contractFirstDue").value},currentUser);else if(type==='recurring')await createRecurringContract(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,costTreatment:$("#costTreatment").value,estimatedMonthlyValue:$("#recurringEstimate").value,startDate:$("#recurringStart").value},currentUser);else await createReserve(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,targetValue:$("#reserveTarget").value},currentUser);await refreshFinancial();closeModal($("#contractModal"));showToast(type==='reserve'?'Meta financeira criada.':'Contrato criado com sucesso.','success');}catch(err){console.error(err);showToast(err.message||'Não foi possível salvar.','error');}finally{setButtonLoading(b,false,'Salvar');}});
+$("#contractForm").addEventListener('submit',async e=>{e.preventDefault();const b=$("#saveContractButton");setButtonLoading(b,true,'Salvar');try{const type=$("#contractType").value;if(type==='installment')await createInstallmentContract(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,costTreatment:$("#costTreatment").value,totalValue:$("#contractTotal").value,installmentsCount:$("#contractInstallments").value,firstDueDate:$("#contractFirstDue").value},currentUser);else if(type==='financing')await createFinancingContract(currentProject.id,{name:$("#contractName").value,financedPrincipal:$("#financingPrincipal").value,installmentsCount:$("#financingInstallments").value,firstDueDate:$("#financingFirstDue").value,estimatedInstallmentValue:$("#financingEstimate").value},currentUser);else if(type==='recurring')await createRecurringContract(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,costTreatment:$("#costTreatment").value,estimatedMonthlyValue:$("#recurringEstimate").value,startDate:$("#recurringStart").value},currentUser);else await createReserve(currentProject.id,{name:$("#contractName").value,category:$("#contractCategory").value,targetValue:$("#reserveTarget").value},currentUser);await refreshFinancial();closeModal($("#contractModal"));showToast(type==='reserve'?'Meta financeira criada.':'Contrato criado com sucesso.','success');}catch(err){console.error(err);showToast(err.message||'Não foi possível salvar.','error');}finally{setButtonLoading(b,false,'Salvar');}});
 
 // --- Payments ---
-$("#paymentContract").addEventListener('change',()=>{preselectedInstallmentId=null;updatePaymentInstallments();});$("#paymentInstallment").addEventListener('change',fillPaymentAmountFromInstallment);
-$("#paymentForm").addEventListener('submit',async e=>{e.preventDefault();const b=$("#savePaymentButton");const amount=Number($("#paymentAmount").value)||0;const source=$("#paymentSource").value;setButtonLoading(b,true,'Confirmar pagamento','Registrando...');const before=structuredClone(financial);try{await recordPayment(currentProject.id,{contractId:$("#paymentContract").value,installmentId:$("#paymentInstallmentField").classList.contains('hidden')?null:$("#paymentInstallment").value,amount,paymentDate:$("#paymentDate").value,shares:readShares('payment',amount,source),sourceReserveId:sourceReserveId(source),paymentMethod:$("#paymentMethod").value,notes:$("#paymentNotes").value},currentUser);await refreshFinancial();closeModal($("#paymentModal"));showToast('Pagamento registrado.','success');checkCelebration(before,financial);}catch(err){console.error(err);showToast(err.message||'Não foi possível registrar o pagamento.','error');}finally{setButtonLoading(b,false,'Confirmar pagamento');preselectedContractId=null;preselectedInstallmentId=null;}});
+$("#paymentContract").addEventListener('change',()=>{preselectedInstallmentId=null;updatePaymentInstallments();});$("#paymentInstallment").addEventListener('change',fillPaymentAmountFromInstallment);$("#paymentPrincipalAmount").addEventListener('input',updateFinancingComponentsSum);$("#paymentFinancingAdditional").addEventListener('input',updateFinancingComponentsSum);$("#paymentAmount").addEventListener('input',updateFinancingComponentsSum);
+
+$("#paymentForm").addEventListener('submit',async e=>{e.preventDefault();const b=$("#savePaymentButton");const amount=Number($("#paymentAmount").value)||0;const source=$("#paymentSource").value;setButtonLoading(b,true,'Confirmar pagamento','Registrando...');const before=structuredClone(financial);try{await recordPayment(currentProject.id,{contractId:$("#paymentContract").value,installmentId:$("#paymentInstallmentField").classList.contains('hidden')?null:$("#paymentInstallment").value,amount,paymentDate:$("#paymentDate").value,shares:readShares('payment',amount,source),sourceReserveId:sourceReserveId(source),paymentMethod:$("#paymentMethod").value,notes:$("#paymentNotes").value,principalAmount:$("#paymentPrincipalAmount").value,financingAdditionalAmount:$("#paymentFinancingAdditional").value,markInstallmentPaid:$("#markFinancingInstallmentPaid").checked},currentUser);await refreshFinancial();closeModal($("#paymentModal"));showToast('Pagamento registrado.','success');checkCelebration(before,financial);}catch(err){console.error(err);showToast(err.message||'Não foi possível registrar o pagamento.','error');}finally{setButtonLoading(b,false,'Confirmar pagamento');preselectedContractId=null;preselectedInstallmentId=null;}});
 
 // --- Expenses ---
 $("#expenseForm").addEventListener('submit',async e=>{e.preventDefault();const b=$("#saveExpenseButton");const amount=Number($("#expenseAmount").value)||0;const source=$("#expenseSource").value;setButtonLoading(b,true,'Salvar despesa','Registrando...');try{await createExpense(currentProject.id,{description:$("#expenseDescription").value,category:$("#expenseCategory").value,amount,date:$("#expenseDate").value,shares:readShares('expense',amount,source),sourceReserveId:sourceReserveId(source),countInRealCost:$("#expenseRealCost").checked,notes:$("#expenseNotes").value},currentUser);await refreshFinancial();e.target.reset();closeModal($("#expenseModal"));showToast('Despesa registrada.','success');}catch(err){console.error(err);showToast(err.message||'Não foi possível salvar a despesa.','error');}finally{setButtonLoading(b,false,'Salvar despesa');}});
@@ -408,7 +541,7 @@ $("#quickPayment").addEventListener('click',()=>{closeModal($("#quickAddModal"))
 $("#quickExpense").addEventListener('click',()=>{closeModal($("#quickAddModal"));openExpense();});
 $("#quickReserve").addEventListener('click',()=>{closeModal($("#quickAddModal"));openReserve();});
 $("#contractsNav").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
-$("#movementsNav").addEventListener('click',()=>{renderMovements();openModal($("#movementsModal"));});
+$("#movementsNav").addEventListener('click',()=>{renderMovements();openModal($("#movementsModal"));});$("#reportsButton").addEventListener('click',()=>{renderReports();closeModal($("#moreModal"));openModal($("#reportsModal"));});$("#contributionHistoryButton").addEventListener('click',()=>{renderReports();openModal($("#reportsModal"));});$("#dashboardContractsButton").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
 $("#newContractFromList").addEventListener('click',()=>{closeModal($("#contractsModal"));prepareContractForm();openModal($("#contractModal"));});
 $("#createReserveFromReserveModal").addEventListener('click',()=>{closeModal($("#reserveModal"));prepareContractForm('reserve');openModal($("#contractModal"));});
 $("#closeCelebration").addEventListener('click',()=>closeModal($("#celebrationModal")));

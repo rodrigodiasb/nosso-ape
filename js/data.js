@@ -257,7 +257,7 @@ export async function loadFinancialData(projectId) {
   ]);
 
   const installmentEntries = await Promise.all(
-    contracts.filter(item => item.type === "installment").map(async contract => [
+    contracts.filter(item => ["installment", "financing"].includes(item.type)).map(async contract => [
       contract.id,
       await listInstallments(projectId, contract.id)
     ])
@@ -311,6 +311,59 @@ export async function createInstallmentContract(projectId, payload, user) {
       dueDate: addMonthsISO(payload.firstDueDate, i),
       expectedValue: fromCents(cents),
       paidValue: 0,
+      status: "future",
+      createdAt: serverTimestamp()
+    });
+  }
+
+  await batch.commit();
+  return { id: contractRef.id };
+}
+
+
+export async function createFinancingContract(projectId, payload, user) {
+  const count = Number(payload.installmentsCount) || 0;
+  const principal = Number(payload.financedPrincipal) || 0;
+  const estimatedInstallmentValue = Number(payload.estimatedInstallmentValue) || 0;
+
+  if (!payload.name?.trim()) throw new Error("Informe o nome do financiamento.");
+  if (principal <= 0) throw new Error("Informe o valor financiado.");
+  if (!Number.isInteger(count) || count < 1 || count > 480) throw new Error("A quantidade de parcelas deve ficar entre 1 e 480.");
+  if (!payload.firstDueDate) throw new Error("Informe o primeiro vencimento.");
+
+  const contractRef = doc(collection(db, "projects", projectId, "contracts"));
+  const batch = writeBatch(db);
+
+  batch.set(contractRef, {
+    name: payload.name.trim(),
+    category: "Financiamento",
+    type: "financing",
+    costTreatment: "financing",
+    financedPrincipal: Math.round(principal * 100) / 100,
+    totalValue: Math.round(principal * 100) / 100,
+    principalPaid: 0,
+    financingAdditionalPaid: 0,
+    installmentsCount: count,
+    firstDueDate: payload.firstDueDate,
+    estimatedInstallmentValue: Math.round(estimatedInstallmentValue * 100) / 100,
+    status: "active",
+    createdBy: user.uid,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
+
+  for (let i = 0; i < count; i++) {
+    const installmentRef = doc(
+      db, "projects", projectId, "contracts", contractRef.id, "installments", String(i + 1).padStart(3, "0")
+    );
+
+    batch.set(installmentRef, {
+      number: i + 1,
+      dueDate: addMonthsISO(payload.firstDueDate, i),
+      expectedValue: Math.round(estimatedInstallmentValue * 100) / 100,
+      paidValue: 0,
+      principalPaid: 0,
+      additionalPaid: 0,
       status: "future",
       createdAt: serverTimestamp()
     });
@@ -421,8 +474,37 @@ export async function recordPayment(projectId, payload, user) {
       const installmentSnap = await transaction.get(installmentRef);
       if (!installmentSnap.exists()) throw new Error("Parcela não encontrada.");
       installment = installmentSnap.data();
-      const remaining = Math.max(0, (Number(installment.expectedValue) || 0) - (Number(installment.paidValue) || 0));
-      if (amount - remaining > 0.009) throw new Error(`O valor excede o saldo restante da parcela (${remaining.toFixed(2)}).`);
+
+      if (contract.type !== "financing") {
+        const remaining = Math.max(0, (Number(installment.expectedValue) || 0) - (Number(installment.paidValue) || 0));
+        if (amount - remaining > 0.009) throw new Error(`O valor excede o saldo restante da parcela (${remaining.toFixed(2)}).`);
+      }
+    }
+
+    let principalAmount = 0;
+    let financingAdditionalAmount = 0;
+
+    if (contract.type === "financing") {
+      if (!installmentRef) throw new Error("Selecione a parcela do financiamento.");
+
+      principalAmount = Number(payload.principalAmount) || 0;
+      financingAdditionalAmount = Number(payload.financingAdditionalAmount) || 0;
+
+      if (principalAmount < 0 || financingAdditionalAmount < 0) {
+        throw new Error("Os componentes do financiamento não podem ser negativos.");
+      }
+
+      if (toCents(principalAmount + financingAdditionalAmount) !== toCents(amount)) {
+        throw new Error("Amortização + juros/seguros/encargos deve ser igual ao valor total pago.");
+      }
+
+      const financedPrincipal = Number(contract.financedPrincipal || contract.totalValue || 0);
+      const alreadyPrincipalPaid = Number(contract.principalPaid || 0);
+      const remainingPrincipal = Math.max(0, financedPrincipal - alreadyPrincipalPaid);
+
+      if (principalAmount - remainingPrincipal > 0.009) {
+        throw new Error(`A amortização informada excede o saldo principal restante (${remainingPrincipal.toFixed(2)}).`);
+      }
     }
 
     let reserve = null;
@@ -445,18 +527,40 @@ export async function recordPayment(projectId, payload, user) {
       paymentMethod: payload.paymentMethod || "Outro",
       notes: payload.notes?.trim() || "",
       costTreatment: contract.costTreatment || "property",
+      principalAmount,
+      financingAdditionalAmount,
       registeredBy: user.uid,
       createdAt: serverTimestamp()
     });
 
     if (installmentRef && installment) {
       const newPaid = Math.round(((Number(installment.paidValue) || 0) + amount) * 100) / 100;
-      const expected = Number(installment.expectedValue) || 0;
-      transaction.update(installmentRef, {
-        paidValue: newPaid,
-        status: newPaid + 0.009 >= expected ? "paid" : "partial",
-        updatedAt: serverTimestamp()
-      });
+
+      if (contract.type === "financing") {
+        const newPrincipal = Math.round(((Number(installment.principalPaid) || 0) + principalAmount) * 100) / 100;
+        const newAdditional = Math.round(((Number(installment.additionalPaid) || 0) + financingAdditionalAmount) * 100) / 100;
+
+        transaction.update(installmentRef, {
+          paidValue: newPaid,
+          principalPaid: newPrincipal,
+          additionalPaid: newAdditional,
+          status: payload.markInstallmentPaid === false ? "partial" : "paid",
+          updatedAt: serverTimestamp()
+        });
+
+        transaction.update(contractRef, {
+          principalPaid: Math.round(((Number(contract.principalPaid) || 0) + principalAmount) * 100) / 100,
+          financingAdditionalPaid: Math.round(((Number(contract.financingAdditionalPaid) || 0) + financingAdditionalAmount) * 100) / 100,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        const expected = Number(installment.expectedValue) || 0;
+        transaction.update(installmentRef, {
+          paidValue: newPaid,
+          status: newPaid + 0.009 >= expected ? "paid" : "partial",
+          updatedAt: serverTimestamp()
+        });
+      }
     }
 
     if (reserveRef && reserve && reserveTxRef) {

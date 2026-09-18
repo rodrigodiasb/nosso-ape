@@ -213,7 +213,7 @@
             <span class="section-kicker">APORTES DO CASAL</span>
             <strong>Participação financeira</strong>
           </div>
-          <button class="ghost-button" data-coming-soon>Ver histórico</button>
+          <button id="contributionHistoryButton" class="ghost-button">Ver histórico</button>
         </div>
 
         <div id="contributionGrid" class="contribution-grid">
@@ -227,7 +227,7 @@
             <span class="section-kicker">CONTRATOS</span>
             <strong>Metas em andamento</strong>
           </div>
-          <button class="ghost-button" data-coming-soon>Ver todos</button>
+          <button id="dashboardContractsButton" class="ghost-button">Ver todos</button>
         </div>
 
         <div id="dashboardContracts" class="dashboard-contracts">
@@ -331,7 +331,7 @@
       <div class="sheet-handle"></div>
       <h3 id="moreTitle">Mais</h3>
       <button id="projectSettingsButton" class="simple-option">Projeto / imóvel <span>›</span></button>
-      <button class="simple-option" data-coming-soon>Relatórios <span>›</span></button>
+      <button id="reportsButton" class="simple-option">Relatórios <span>›</span></button>
       <button class="simple-option" data-coming-soon>Configurações <span>›</span></button>
       <button id="logoutButton" class="simple-option danger">Sair <span>→</span></button>
     </div>
@@ -387,7 +387,7 @@
       <div class="sheet-handle"></div>
       <h3 id="contractModalTitle">Novo compromisso financeiro</h3>
       <form id="contractForm" class="setup-form">
-        <label class="field"><span>Tipo</span><div class="field-box select-box"><select id="contractType" required><option value="installment">Parcelado</option><option value="recurring">Recorrente / valor variável</option><option value="reserve">Meta / reserva financeira</option></select></div></label>
+        <label class="field"><span>Tipo</span><div class="field-box select-box"><select id="contractType" required><option value="installment">Parcelado</option><option value="financing">Financiamento bancário</option><option value="recurring">Recorrente / valor variável</option><option value="reserve">Meta / reserva financeira</option></select></div></label>
         <label class="field"><span>Nome</span><div class="field-box"><input id="contractName" type="text" placeholder="Ex.: Entrada do apartamento" maxlength="80" required></div></label>
         <label class="field"><span>Categoria</span><div class="field-box select-box"><select id="contractCategory"><option>Aquisição</option><option>Financiamento</option><option>Juros de obra</option><option>Documentação</option><option>Banco</option><option>Entrega</option><option>Reforma</option><option selected>Móveis</option><option>Outros</option></select></div></label>
 
@@ -399,6 +399,20 @@
         <div id="installmentFields">
           <div class="two-cols"><label class="field"><span>Valor total</span><div class="field-box money-box"><b>R$</b><input id="contractTotal" type="number" min="0" step="0.01"></div></label><label class="field"><span>Nº de parcelas</span><div class="field-box"><input id="contractInstallments" type="number" min="1" max="480" step="1"></div></label></div>
           <label class="field"><span>Primeiro vencimento</span><div class="field-box"><input id="contractFirstDue" type="date"></div></label>
+        </div>
+
+        <div id="financingFields" class="hidden">
+          <div class="finance-explainer">
+            <strong>Financiamento sem dupla contagem</strong>
+            <span>O principal financiado já faz parte do valor do imóvel. Em cada prestação você informará quanto foi amortização e quanto foi juros, seguros e encargos.</span>
+          </div>
+          <label class="field"><span>Valor financiado (principal)</span><div class="field-box money-box"><b>R$</b><input id="financingPrincipal" type="number" min="0" step="0.01"></div></label>
+          <div class="two-cols">
+            <label class="field"><span>Nº de parcelas</span><div class="field-box"><input id="financingInstallments" type="number" min="1" max="480" step="1"></div></label>
+            <label class="field"><span>1º vencimento</span><div class="field-box"><input id="financingFirstDue" type="date"></div></label>
+          </div>
+          <label class="field"><span>Prestação estimada inicial (opcional)</span><div class="field-box money-box"><b>R$</b><input id="financingEstimate" type="number" min="0" step="0.01"></div></label>
+          <p class="helper-note">A prestação estimada serve apenas para o calendário. O valor real será informado na baixa de cada mês.</p>
         </div>
 
         <div id="recurringFields" class="hidden">
@@ -424,6 +438,19 @@
         <label class="field"><span>Contrato</span><div class="field-box select-box"><select id="paymentContract" required></select></div></label>
         <label id="paymentInstallmentField" class="field hidden"><span>Parcela</span><div class="field-box select-box"><select id="paymentInstallment"></select></div></label>
         <div class="two-cols"><label class="field"><span>Valor pago</span><div class="field-box money-box"><b>R$</b><input id="paymentAmount" type="number" min="0.01" step="0.01" required></div></label><label class="field"><span>Data</span><div class="field-box"><input id="paymentDate" type="date" required></div></label></div>
+        <div id="financingPaymentFields" class="hidden financing-payment-box">
+          <div class="finance-explainer">
+            <strong>Composição desta prestação</strong>
+            <span>Use o demonstrativo do banco. O total abaixo deve ser exatamente igual ao valor pago.</span>
+          </div>
+          <div class="two-cols">
+            <label class="field"><span>Amortização do principal</span><div class="field-box money-box"><b>R$</b><input id="paymentPrincipalAmount" type="number" min="0" step="0.01" value="0"></div></label>
+            <label class="field"><span>Juros + seguros + encargos</span><div class="field-box money-box"><b>R$</b><input id="paymentFinancingAdditional" type="number" min="0" step="0.01" value="0"></div></label>
+          </div>
+          <div class="finance-sum-row"><span>Soma dos componentes</span><strong id="financingComponentsSum">R$ 0,00</strong></div>
+          <label class="check-row"><input id="markFinancingInstallmentPaid" type="checkbox" checked><span>Considerar esta prestação quitada</span></label>
+        </div>
+
         <label class="field"><span>Origem do dinheiro</span><div class="field-box select-box"><select id="paymentSource"><option value="direct">Pagamento direto</option></select></div></label>
         <div id="paymentPayerArea"></div>
         <label class="field"><span>Forma de pagamento</span><div class="field-box select-box"><select id="paymentMethod"><option>Pix</option><option>Boleto</option><option>Transferência</option><option>Débito</option><option>Crédito</option><option>Outro</option></select></div></label>
@@ -499,6 +526,20 @@
       <div class="sheet-handle"></div>
       <h3 id="movementsModalTitle">Movimentações</h3>
       <div id="movementsList" class="movements-list"></div>
+    </div>
+  </div>
+
+  <!-- RELATÓRIOS -->
+  <div id="reportsModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="reportsModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet report-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading-row"><div><p class="section-kicker">INTELIGÊNCIA FINANCEIRA</p><h3 id="reportsModalTitle">Relatórios do Nosso Apê</h3></div></div>
+      <div id="reportHero" class="report-hero"></div>
+      <div class="report-section"><div class="report-title-row"><div><strong>Para onde foi o dinheiro?</strong><span>Capital novo empregado, sem contar duas vezes valores transferidos de reservas.</span></div></div><div id="reportCategoryBars" class="report-bars"></div></div>
+      <div class="report-section"><div class="report-title-row"><div><strong>Custos além do preço do imóvel</strong><span>Juros, seguros, encargos, cartório, certidões e demais custos adicionais reconhecidos.</span></div></div><div id="reportAdditionalBars" class="report-bars"></div></div>
+      <div class="report-section"><div class="report-title-row"><div><strong>Ritmo mensal de aportes</strong><span>Últimos meses com entrada efetiva de novo capital no projeto.</span></div></div><div id="reportMonthlyBars" class="monthly-bars"></div></div>
+      <div class="report-section"><div class="report-title-row"><div><strong>Compromissos conhecidos</strong><span>Parcelas comuns ainda previstas e principal de financiamento ainda não amortizado.</span></div></div><div id="reportFuture" class="future-report"></div><p class="report-disclaimer">Juros futuros de financiamento e despesas ainda não cadastradas não entram na projeção até serem conhecidos.</p></div>
     </div>
   </div>
 

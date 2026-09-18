@@ -1,66 +1,79 @@
-# Nosso Apê — v0.3
+# Nosso Apê — v0.4
 
-Núcleo financeiro real do projeto.
+Versão de inteligência financeira e financiamento bancário.
 
-## O que já funciona
+## Novidades
 
-- Contrato parcelado com geração automática de até 480 parcelas.
-- Contrato recorrente/variável, adequado para juros de obra.
-- Meta/reserva financeira, adequada para móveis planejados.
-- Aporte em reserva com identificação de quem colocou o dinheiro.
-- Pagamento total ou parcial de parcelas.
-- Pagamento de contrato recorrente.
-- Pagamento direto ou usando saldo de uma reserva.
-- Despesa avulsa: cartório, certidões, taxas, banco, reforma etc.
-- `registeredBy` automático: quem deu baixa fica auditado pelo UID do login.
-- `shares`: registra quanto cada pessoa efetivamente aportou.
-- Dashboard real: valor do imóvel, custos adicionais, custo real conhecido, capital empregado, aportes e próximos vencimentos.
-- Extrato de movimentações.
-- Tela de conquista quando uma meta/reserva ou contrato parcelado chega a 100%.
-
-## Regra contábil usada
-
-`Custo real conhecido = valor do imóvel + custos adicionais já reconhecidos`
-
-`Capital empregado = pagamentos + despesas + saldo atual das reservas`
-
-Quando uma reserva é usada para pagar algo, o saldo da reserva cai e o pagamento/despesa aumenta. Portanto, o capital empregado não é contado duas vezes.
+- Novo tipo de contrato: **Financiamento bancário**.
+- O principal financiado não é somado novamente ao custo real do imóvel.
+- Em cada prestação, o pagamento é dividido entre:
+  - amortização do principal;
+  - juros + seguros + encargos.
+- Só a parte de juros/seguros/encargos aumenta os **Custos adicionais**.
+- O valor integral da prestação continua compondo o **Capital empregado**.
+- Acompanhamento do principal ainda não amortizado.
+- Relatórios visuais:
+  - custo real conhecido;
+  - percentual de custos adicionais sobre o valor do imóvel;
+  - capital empregado;
+  - saldo em reservas;
+  - distribuição do dinheiro por categoria;
+  - custos adicionais por categoria;
+  - ritmo mensal de aportes;
+  - parcelas futuras conhecidas;
+  - principal de financiamento ainda não amortizado;
+  - compromissos estimados dos próximos 30 dias.
 
 ## Atualização
 
-1. Firebase Console → Firestore Database → Regras.
-2. Substitua pelas regras do arquivo `firestore.rules` desta versão e clique em Publicar.
-3. Depois substitua os arquivos do GitHub pelos arquivos da v0.3.
-4. Aguarde o GitHub Pages publicar e faça `Ctrl + F5`.
+1. Publique primeiro o novo `firestore.rules` no Firebase.
+2. Depois substitua os arquivos do GitHub pela v0.4.
+3. Aguarde o GitHub Pages publicar.
+4. Faça `Ctrl + F5` no computador e feche/abra o PWA no celular.
 
-## Primeiro teste recomendado
+## Teste recomendado — financiamento
 
-Crie:
+Crie um novo compromisso:
 
-### Entrada do apartamento
-- Tipo: Parcelado
-- Categoria: Aquisição
-- Como entra no custo real: Parte do valor do imóvel
-- Valor total: valor real da entrada
-- Quantidade: 23
-- Primeiro vencimento: data real
+- Tipo: `Financiamento bancário`
+- Nome: `Financiamento do apartamento`
+- Valor financiado (principal): use um valor de teste
+- Número de parcelas: por exemplo 360
+- Primeiro vencimento: uma data válida
+- Prestação estimada inicial: opcional
 
-O aplicativo gerará as 23 parcelas.
+Ao registrar uma prestação, informe um exemplo como:
 
-### Juros de obra
-- Tipo: Recorrente / valor variável
-- Categoria: Juros de obra
-- Como entra no custo real: Custo adicional
+- Total pago: R$ 3.200,00
+- Amortização do principal: R$ 1.450,00
+- Juros + seguros + encargos: R$ 1.750,00
 
-Cada pagamento de juros aumentará automaticamente `Custos adicionais` e `Custo real conhecido`.
+A soma dos dois componentes precisa ser igual ao total pago.
 
-### Móveis planejados
-- Tipo: Meta / reserva financeira
-- Categoria: Móveis
-- Meta financeira: valor que vocês querem juntar
+Resultado esperado:
 
-Cada aporte aumentará o `Capital empregado`, mas não o custo real enquanto o dinheiro estiver apenas reservado.
+- `Capital empregado` aumenta R$ 3.200,00.
+- `Custos adicionais` aumentam somente R$ 1.750,00.
+- `Principal restante` cai R$ 1.450,00.
 
-## Atenção sobre financiamento
+## Relatórios
 
-Nesta versão, se o financiamento for cadastrado como `Parte do valor do imóvel`, as parcelas não são somadas novamente ao custo real, evitando duplicar o preço do apartamento. Juros bancários embutidos em financiamento ainda não são separados automaticamente entre principal e juros. Esse refinamento poderá entrar em uma versão posterior.
+Acesse:
+
+`Mais → Relatórios`
+
+Os relatórios trabalham somente com valores já registrados ou conhecidos. O aplicativo não inventa juros futuros do financiamento.
+
+## Compatibilidade
+
+Os contratos, despesas, reservas e pagamentos já cadastrados na v0.3 continuam compatíveis.
+
+## Próxima etapa sugerida
+
+A v0.5 deve priorizar integridade e manutenção dos dados:
+
+- correção/estorno de lançamentos;
+- edição controlada de contratos;
+- histórico de alterações;
+- exportação/backup CSV e JSON;
+- calendário financeiro completo.
