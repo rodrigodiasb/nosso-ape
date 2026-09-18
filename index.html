@@ -86,6 +86,55 @@
     </div>
   </section>
 
+
+  <!-- CONFIGURAÇÃO INICIAL DO PROJETO -->
+  <section id="setupView" class="setup-view hidden">
+    <div class="setup-shell">
+      <div class="setup-brand">
+        <div class="brand-mark small-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path d="M10 30 32 11l22 19v23H40V38H24v15H10Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M25 25c3-4 10-4 13 0 3 4 1 9-6 14-7-5-9-10-7-14Z" fill="currentColor" opacity=".85"/>
+          </svg>
+        </div>
+        <div>
+          <p class="eyebrow light">PRIMEIRA CONFIGURAÇÃO</p>
+          <h2>Vamos conectar vocês ao mesmo projeto</h2>
+          <p>Um de vocês cria o projeto do imóvel. O outro entra com um código de convite.</p>
+        </div>
+      </div>
+
+      <div class="setup-card">
+        <div class="setup-tabs" role="tablist">
+          <button id="createTab" class="setup-tab active" type="button">Criar projeto</button>
+          <button id="joinTab" class="setup-tab" type="button">Entrar com convite</button>
+        </div>
+
+        <form id="createProjectForm" class="setup-form">
+          <div class="setup-intro">
+            <strong>Dados iniciais do imóvel</strong>
+            <span>Esses dados poderão ser alterados depois.</span>
+          </div>
+
+          <label class="field"><span>Nome do projeto</span><div class="field-box"><input id="projectNameInput" type="text" value="Nosso Apê" maxlength="60" required /></div></label>
+          <label class="field"><span>Valor contratado do imóvel</span><div class="field-box money-box"><b>R$</b><input id="propertyValueInput" type="number" min="0" step="0.01" placeholder="0,00" required /></div></label>
+          <label class="field"><span>Data do contrato / aquisição</span><div class="field-box"><input id="purchaseDateInput" type="date" /></div></label>
+          <label class="field"><span>E-mail da sua parceira (opcional agora)</span><div class="field-box"><input id="partnerEmailInput" type="email" placeholder="email@exemplo.com" /></div></label>
+
+          <button id="createProjectButton" class="primary-button" type="submit"><span>Criar nosso projeto</span><span class="button-arrow">→</span></button>
+        </form>
+
+        <form id="joinProjectForm" class="setup-form hidden">
+          <div class="setup-intro"><strong>Recebeu um convite?</strong><span>Entre com a mesma conta de e-mail para a qual o convite foi criado.</span></div>
+          <label class="field"><span>Código do convite</span><div class="field-box invite-box"><input id="inviteCodeInput" type="text" placeholder="EX.: A7K9P2QM" maxlength="12" autocomplete="off" required /></div></label>
+          <button id="joinProjectButton" class="primary-button" type="submit"><span>Entrar no projeto</span><span class="button-arrow">→</span></button>
+        </form>
+
+        <button id="setupLogoutButton" class="setup-logout" type="button">Sair desta conta</button>
+      </div>
+    </div>
+  </section>
+
   <!-- APP -->
   <section id="appView" class="app-view hidden">
     <header class="app-header">
@@ -107,18 +156,18 @@
           <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21H3Z"/><path d="M8 21v-6h8v6"/></svg>
         </div>
         <div class="property-copy">
-          <strong>Apartamento</strong>
-          <span>Projeto financeiro da aquisição</span>
+          <strong id="propertyName">Nosso imóvel</strong>
+          <span id="propertySubtitle">Projeto financeiro da aquisição</span>
         </div>
         <span class="chevron">›</span>
       </section>
 
-      <div class="demo-pill">BASE VISUAL • DADOS DE DEMONSTRAÇÃO</div>
+      <div class="demo-pill real-pill">DADOS REAIS • FIRESTORE</div>
 
       <section class="hero-finance">
-        <p>Custo real do projeto</p>
-        <strong>R$ 537.842,35</strong>
-        <span>Valor do imóvel + custos adicionais acumulados</span>
+        <p>Custo real conhecido</p>
+        <strong id="realProjectCost">R$ 0,00</strong>
+        <span id="realProjectCostHint">Valor do imóvel + custos adicionais cadastrados</span>
 
         <div class="hero-shine"></div>
         <div class="hero-grid"></div>
@@ -127,15 +176,15 @@
       <section class="metrics-grid">
         <article class="metric-card card">
           <span>Valor do imóvel</span>
-          <strong>R$ 500 mil</strong>
+          <strong id="propertyValueMetric">R$ 0,00</strong>
         </article>
         <article class="metric-card card">
           <span>Custos adicionais</span>
-          <strong>R$ 37.842</strong>
+          <strong id="additionalCostsMetric">R$ 0,00</strong>
         </article>
         <article class="metric-card card">
           <span>Capital empregado</span>
-          <strong>R$ 170.300</strong>
+          <strong id="employedCapitalMetric">R$ 0,00</strong>
         </article>
       </section>
 
@@ -145,16 +194,16 @@
             <span class="section-kicker">PROGRESSO FINANCEIRO</span>
             <strong>Capital empregado</strong>
           </div>
-          <span class="percentage-badge">31,7%</span>
+          <span id="financialProgressBadge" class="percentage-badge">0%</span>
         </div>
 
-        <div class="progress-track" role="progressbar" aria-label="Progresso financeiro" aria-valuenow="31.7" aria-valuemin="0" aria-valuemax="100">
-          <div class="progress-fill" style="width:31.7%"></div>
+        <div id="financialProgressTrack" class="progress-track" role="progressbar" aria-label="Progresso financeiro" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+          <div id="financialProgressFill" class="progress-fill" style="width:0%"></div>
         </div>
 
         <div class="progress-caption">
-          <span>R$ 170.300 empregados</span>
-          <span>de R$ 537.842</span>
+          <span id="financialProgressPaid">R$ 0,00 empregados</span>
+          <span id="financialProgressTotal">de R$ 0,00</span>
         </div>
       </section>
 
@@ -167,30 +216,8 @@
           <button class="ghost-button" data-coming-soon>Ver histórico</button>
         </div>
 
-        <div class="contribution-grid">
-          <article class="person-card">
-            <div class="person-top">
-              <div class="mini-avatar blue">V</div>
-              <div>
-                <strong>Você</strong>
-                <span>R$ 92.500</span>
-              </div>
-              <b>54,3%</b>
-            </div>
-            <div class="mini-progress"><i style="width:54.3%"></i></div>
-          </article>
-
-          <article class="person-card">
-            <div class="person-top">
-              <div class="mini-avatar rose">P</div>
-              <div>
-                <strong>Parceira</strong>
-                <span>R$ 77.800</span>
-              </div>
-              <b>45,7%</b>
-            </div>
-            <div class="mini-progress rose-bar"><i style="width:45.7%"></i></div>
-          </article>
+        <div id="contributionGrid" class="contribution-grid">
+          <div class="empty-mini">Os aportes aparecerão aqui quando cadastrarmos pagamentos e reservas.</div>
         </div>
       </section>
 
@@ -203,49 +230,25 @@
           <button class="ghost-button" data-coming-soon>Ver todos</button>
         </div>
 
-        <article class="contract-row">
-          <div class="contract-icon green">
+        <div class="empty-contract">
+          <div class="empty-contract-icon">
             <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>
           </div>
-          <div class="contract-body">
-            <div class="contract-title">
-              <strong>Entrada do apartamento</strong>
-              <span>18 / 23</span>
-            </div>
-            <div class="mini-progress"><i style="width:78%"></i></div>
-            <div class="contract-meta">
-              <span>R$ 72.000 pagos</span>
-              <span>78%</span>
-            </div>
+          <div>
+            <strong>Nenhum contrato cadastrado ainda</strong>
+            <span>Na próxima etapa entraremos com entrada, parcelas, financiamento, juros de obra e móveis.</span>
           </div>
-        </article>
-
-        <article class="contract-row">
-          <div class="contract-icon blue">
-            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M9 10h4.5a2 2 0 1 1 0 4H10"/></svg>
-          </div>
-          <div class="contract-body">
-            <div class="contract-title">
-              <strong>Móveis planejados</strong>
-              <span>Meta</span>
-            </div>
-            <div class="mini-progress blue-bar"><i style="width:50%"></i></div>
-            <div class="contract-meta">
-              <span>R$ 20.000 empregados</span>
-              <span>50%</span>
-            </div>
-          </div>
-        </article>
+        </div>
       </section>
 
-      <section class="card next-payment-card">
-        <div class="next-payment-icon">10</div>
+      <section class="card next-payment-card muted-payment">
+        <div class="next-payment-icon">✓</div>
         <div>
-          <span class="section-kicker">PRÓXIMO PAGAMENTO</span>
-          <strong>Entrada • parcela 19/23</strong>
-          <small>10/10/2026</small>
+          <span class="section-kicker">PRÓXIMOS COMPROMISSOS</span>
+          <strong id="nextPaymentText">Nenhum vencimento cadastrado</strong>
+          <small>Os vencimentos aparecerão quando cadastrarmos os contratos.</small>
         </div>
-        <b>R$ 4.000</b>
+        <b>—</b>
       </section>
 
       <div class="bottom-safe-space"></div>
@@ -325,10 +328,52 @@
     <div class="action-sheet compact-sheet">
       <div class="sheet-handle"></div>
       <h3 id="moreTitle">Mais</h3>
-      <button class="simple-option" data-coming-soon>Projeto / imóvel <span>›</span></button>
+      <button id="projectSettingsButton" class="simple-option">Projeto / imóvel <span>›</span></button>
       <button class="simple-option" data-coming-soon>Relatórios <span>›</span></button>
       <button class="simple-option" data-coming-soon>Configurações <span>›</span></button>
       <button id="logoutButton" class="simple-option danger">Sair <span>→</span></button>
+    </div>
+  </div>
+
+
+  <!-- CONVITE CRIADO -->
+  <div id="inviteSuccessModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="inviteSuccessTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet">
+      <div class="sheet-handle"></div>
+      <div class="success-orb">✓</div>
+      <h3 id="inviteSuccessTitle" class="center-title">Projeto criado!</h3>
+      <p class="center-copy">Envie este código para sua parceira. Ela deve entrar com o e-mail convidado.</p>
+      <div class="invite-code-card"><span>Código de convite</span><strong id="createdInviteCode">—</strong></div>
+      <button id="copyInviteButton" class="primary-button" type="button">Copiar código</button>
+      <button id="continueAfterInvite" class="secondary-button" type="button">Ir para o dashboard</button>
+    </div>
+  </div>
+
+  <!-- PROJETO / IMÓVEL -->
+  <div id="projectModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="projectModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet project-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="projectModalTitle">Projeto / imóvel</h3>
+
+      <form id="projectSettingsForm" class="setup-form">
+        <label class="field"><span>Nome do projeto</span><div class="field-box"><input id="settingsProjectName" type="text" maxlength="60" required /></div></label>
+        <label class="field"><span>Valor contratado do imóvel</span><div class="field-box money-box"><b>R$</b><input id="settingsPropertyValue" type="number" min="0" step="0.01" required /></div></label>
+        <label class="field"><span>Data do contrato / aquisição</span><div class="field-box"><input id="settingsPurchaseDate" type="date" /></div></label>
+        <button class="primary-button" type="submit">Salvar alterações</button>
+      </form>
+
+      <div class="divider"></div>
+      <div class="setup-intro"><strong>Membros do projeto</strong><span id="membersSummary">Carregando...</span></div>
+      <div id="membersList" class="members-list"></div>
+
+      <div class="divider"></div>
+      <form id="newInviteForm" class="setup-form">
+        <div class="setup-intro"><strong>Convidar a outra pessoa</strong><span>Gere um novo código vinculado ao e-mail informado.</span></div>
+        <label class="field"><span>E-mail</span><div class="field-box"><input id="newInviteEmail" type="email" placeholder="email@exemplo.com" required /></div></label>
+        <button class="secondary-button" type="submit">Gerar código de convite</button>
+      </form>
     </div>
   </div>
 

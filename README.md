@@ -1,75 +1,130 @@
-# Nosso Apê — v0.1
+# Nosso Apê — v0.2
 
-Primeira base funcional da PWA.
+Segunda base funcional da PWA.
 
-## O que já funciona
+## O que mudou nesta versão
 
-- Login real pelo Firebase Authentication (e-mail/senha)
-- Persistência da sessão
-- Recuperação de senha
-- Logout
-- PWA instalável
-- Interface responsiva baseada no protótipo visual
-- Dashboard demonstrativo
-- Botão central de ações
-- Menu "Mais"
+- O dashboard deixou de usar valores fictícios.
+- O primeiro usuário pode criar o projeto real do imóvel.
+- Valor contratado e data da aquisição passam a vir do Cloud Firestore.
+- É possível convidar a segunda pessoa por e-mail + código de convite.
+- A segunda conta entra no mesmo projeto usando o código.
+- Ambos passam a visualizar o mesmo projeto.
+- Tela Projeto / imóvel permite editar os dados básicos.
+- Lista de membros vinculados.
+- Firestore Security Rules por projeto e membro.
+- Estrutura de segurança já reservada para contratos, parcelas, pagamentos, despesas e reservas.
 
-## Importante
+## ORDEM PARA ATUALIZAR
 
-Nesta versão, os valores do dashboard são **dados de demonstração**.
-O Cloud Firestore deve permanecer bloqueado com:
+### 1. Atualize PRIMEIRO as regras do Firestore
 
-```txt
-allow read, write: if false;
+Firebase Console → Firestore Database → Regras
+
+Apague o conteúdo atual e cole integralmente o conteúdo do arquivo:
+
+`firestore.rules`
+
+Clique em **Publicar**.
+
+### 2. Atualize os arquivos no GitHub
+
+Substitua os arquivos anteriores pelos arquivos desta v0.2.
+
+O arquivo novo mais importante é:
+
+`js/data.js`
+
+### 3. Recarregue o GitHub Pages
+
+O Service Worker mudou de `v01` para `v02`.
+
+Se a versão anterior continuar aparecendo:
+- faça recarga forçada (Ctrl + F5), ou
+- feche e abra novamente o PWA, ou
+- remova e instale novamente o atalho do aplicativo apenas se necessário.
+
+## TESTE A — criar o projeto
+
+Entre com a conta que será usada para criar o projeto.
+
+Como essa conta ainda não tem projeto vinculado, aparecerá uma nova tela:
+
+**Criar projeto | Entrar com convite**
+
+Escolha **Criar projeto**.
+
+Preencha:
+- nome do projeto;
+- valor contratado do imóvel;
+- data do contrato;
+- e-mail da outra pessoa.
+
+Ao concluir, será gerado um código semelhante a:
+
+`J7K8Q2PM`
+
+Copie esse código.
+
+## TESTE B — conectar a segunda conta
+
+1. Saia da primeira conta.
+2. Entre com a segunda conta.
+3. Escolha **Entrar com convite**.
+4. Informe o código gerado.
+5. A conta deve passar a visualizar o mesmo projeto.
+
+O convite somente pode ser lido/aceito pela conta cujo e-mail seja igual ao e-mail informado na criação do convite.
+
+## TESTE C — acesso compartilhado
+
+Altere o valor do imóvel em:
+
+Mais → Projeto / imóvel
+
+Salve.
+
+Depois entre com a outra conta.
+
+O novo valor deve aparecer para os dois usuários.
+
+## Estrutura criada no Firestore
+
+Após o teste, você verá automaticamente:
+
+```text
+users
+  └── UID
+       └── activeProjectId
+
+projects
+  └── projectId
+       ├── name
+       ├── propertyValue
+       ├── ownerUid
+       └── members
+            ├── UID 1
+            └── UID 2
+
+invites
+  └── CODIGO
+       ├── projectId
+       ├── email
+       └── status
 ```
 
-A próxima etapa será criar a estrutura real do banco e regras de segurança baseadas em projeto + membros.
+NÃO é necessário criar nenhuma dessas coleções manualmente.
 
-## 1. Criar os dois usuários
+## Próxima versão
 
-No Firebase Console:
+A v0.3 será o núcleo financeiro:
 
-Authentication → Usuários → Adicionar usuário
-
-Crie manualmente uma conta para cada integrante do casal.
-
-Não existe cadastro público na interface desta versão.
-
-## 2. Testar localmente
-
-Como o projeto usa JavaScript Modules, não abra o `index.html` apenas com duplo clique.
-
-Uma forma simples é usar uma extensão de servidor local (por exemplo, Live Server) ou publicar diretamente no GitHub Pages.
-
-## 3. Publicar no GitHub Pages
-
-Envie **o conteúdo desta pasta** para a raiz do repositório.
-
-Depois:
-
-Settings → Pages → Deploy from a branch → `main` → `/ (root)`
-
-## 4. Autorizar o domínio do GitHub Pages no Firebase
-
-Depois que souber a URL final, vá em:
-
-Firebase Console → Authentication → Settings → Authorized domains
-
-Adicione:
-
-`SEU-USUARIO.github.io`
-
-Se futuramente usar domínio próprio, ele também deverá ser autorizado.
-
-## 5. Firestore
-
-NÃO crie coleções manualmente nesta etapa.
-
-A estrutura oficial será criada na v0.2.
-
-## Segurança
-
-O objeto `firebaseConfig` do front-end não é uma senha administrativa.
-Não coloque no front-end chaves privadas, credenciais de conta de serviço ou segredos administrativos.
-
-A proteção dos dados será feita pelas Firebase Security Rules e pelo vínculo dos usuários ao projeto.
+- criação de contratos;
+- contrato parcelado;
+- contrato recorrente variável;
+- meta financeira;
+- geração automática de parcelas;
+- baixa total/parcial;
+- identificação de quem pagou;
+- auditoria de quem registrou;
+- primeiro cálculo real de capital empregado.

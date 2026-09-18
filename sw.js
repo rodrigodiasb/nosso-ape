@@ -1,4 +1,4 @@
-const CACHE_NAME = "nosso-ape-shell-v01";
+const CACHE_NAME = "nosso-ape-shell-v02";
 
 const APP_SHELL = [
   "./",
@@ -6,6 +6,7 @@ const APP_SHELL = [
   "./css/styles.css",
   "./js/app.js",
   "./js/auth.js",
+  "./js/data.js",
   "./js/firebase.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
