@@ -253,6 +253,23 @@
         <b>—</b>
       </section>
 
+      <section id="agendaDashboardCard" class="card agenda-dashboard-card">
+        <div class="agenda-dashboard-head">
+          <div class="agenda-dashboard-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M8 3v4M16 3v4M4 9h16"/></svg>
+          </div>
+          <div>
+            <span class="section-kicker">AGENDA FINANCEIRA</span>
+            <strong>Próximos compromissos</strong>
+          </div>
+          <button id="openCalendarDashboard" class="ghost-button" type="button">Ver calendário</button>
+        </div>
+        <div class="agenda-dashboard-grid">
+          <div class="agenda-mini-kpi danger-soft"><span>Vencidos</span><strong id="dashboardOverdueValue">R$ 0,00</strong><small id="dashboardOverdueCount">0 compromissos</small></div>
+          <div class="agenda-mini-kpi"><span>Próximos 30 dias</span><strong id="dashboardNext30Value">R$ 0,00</strong><small id="dashboardNext30Count">0 compromissos</small></div>
+        </div>
+      </section>
+
       <div class="bottom-safe-space"></div>
     </main>
 
@@ -331,6 +348,7 @@
       <div class="sheet-handle"></div>
       <h3 id="moreTitle">Mais</h3>
       <button id="projectSettingsButton" class="simple-option">Projeto / imóvel <span>›</span></button>
+      <button id="calendarButton" class="simple-option">Calendário financeiro <span>›</span></button>
       <button id="reportsButton" class="simple-option">Relatórios <span>›</span></button>
       <button id="backupButton" class="simple-option">Backup e exportação <span>›</span></button>
       <button class="simple-option" data-coming-soon>Configurações <span>›</span></button>
@@ -553,6 +571,50 @@
       <button id="exportJsonButton" class="export-option" type="button"><span class="action-icon green">{ }</span><span><strong>Backup completo em JSON</strong><small>Projeto, membros, contratos, parcelas, reservas e movimentações.</small></span><b>↓</b></button>
       <button id="exportCsvButton" class="export-option" type="button"><span class="action-icon blue">CSV</span><span><strong>Movimentações em CSV</strong><small>Compatível com Excel; inclui lançamentos ativos e estornados.</small></span><b>↓</b></button>
       <p class="backup-note">Recomendação: gere um backup após lançamentos importantes e antes de mudanças estruturais no aplicativo.</p>
+    </div>
+  </div>
+
+  <!-- CALENDÁRIO FINANCEIRO -->
+  <div id="calendarModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="calendarModalTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet calendar-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading-row">
+        <div><p class="section-kicker">PLANEJAMENTO DE CAIXA</p><h3 id="calendarModalTitle">Calendário financeiro</h3></div>
+      </div>
+
+      <div id="calendarSummaryGrid" class="calendar-summary-grid"></div>
+
+      <div class="agenda-filter-row" aria-label="Período da agenda">
+        <button class="agenda-filter" data-agenda-filter="overdue" type="button">Vencidos</button>
+        <button class="agenda-filter" data-agenda-filter="7" type="button">7 dias</button>
+        <button class="agenda-filter active" data-agenda-filter="30" type="button">30 dias</button>
+        <button class="agenda-filter" data-agenda-filter="60" type="button">60 dias</button>
+        <button class="agenda-filter" data-agenda-filter="90" type="button">90 dias</button>
+      </div>
+      <div id="agendaPeriodList" class="agenda-period-list"></div>
+
+      <section class="calendar-panel">
+        <div class="calendar-toolbar">
+          <button id="calendarPrev" class="calendar-arrow" type="button" aria-label="Mês anterior">‹</button>
+          <div><span>CALENDÁRIO</span><strong id="calendarMonthTitle">—</strong></div>
+          <button id="calendarNext" class="calendar-arrow" type="button" aria-label="Próximo mês">›</button>
+        </div>
+        <div class="calendar-weekdays"><span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span></div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
+
+      <section class="selected-day-panel">
+        <div class="selected-day-heading"><div><span class="section-kicker">DIA SELECIONADO</span><strong id="selectedDayTitle">—</strong></div><span id="selectedDayTotal" class="selected-day-total">—</span></div>
+        <div id="selectedDayList" class="selected-day-list"></div>
+      </section>
+
+      <section class="cashflow-panel">
+        <div class="report-title-row"><div><strong>Fluxo previsto dos próximos 12 meses</strong><span>Considera parcelas com valores conhecidos e estimativas cadastradas. Valores futuros ainda desconhecidos não são inventados.</span></div></div>
+        <div id="cashflowHero" class="cashflow-hero"></div>
+        <div id="cashflowBars" class="cashflow-bars"></div>
+        <p class="report-disclaimer">Contratos recorrentes entram como estimativa a partir do mês atual quando possuem valor mensal informado. Juros futuros desconhecidos permanecem como “a confirmar”.</p>
+      </section>
     </div>
   </div>
 

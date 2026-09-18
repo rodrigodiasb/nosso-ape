@@ -1,95 +1,57 @@
-# Nosso Apê — v0.5
+# Nosso Apê — v0.6
 
-Versão de integridade financeira, estornos e backup.
+Versão focada em **Calendário Financeiro e Fluxo Futuro**.
 
 ## O que entrou
 
-- Estorno seguro de pagamentos, despesas e aportes em reservas.
-- Nenhum lançamento financeiro é apagado: o original permanece visível como **ESTORNADO**.
-- Registro de quem realizou o lançamento e de quem realizou o estorno.
-- Motivo obrigatório para o estorno.
-- Reversão automática dos efeitos financeiros do lançamento:
-  - parcela;
-  - amortização do financiamento;
-  - custos adicionais;
-  - capital empregado;
-  - participação individual;
-  - saldo de reservas.
-- Proteção contra estorno de aporte já consumido por uma reserva.
-- Exportação de backup completo em JSON.
-- Exportação de movimentações em CSV compatível com Excel.
-- Regras do Firestore mais restritivas: lançamentos financeiros não podem ter valor/data/pagadores adulterados após a criação; somente campos de estorno podem ser acrescentados.
+- Card de Agenda Financeira no dashboard.
+- Total e quantidade de compromissos vencidos.
+- Visões de próximos 7, 30, 60 e 90 dias.
+- Calendário mensal navegável.
+- Destaque visual de hoje, vencimentos e atrasados.
+- Toque em um vencimento abre diretamente a tela de pagamento.
+- Seleção de um dia mostra todos os compromissos daquele dia.
+- Projeção visual dos próximos 12 meses.
+- Identificação do mês de maior saída conhecida.
+- Parcelas parcialmente pagas entram somente pelo saldo restante.
+- Financiamentos usam a prestação estimada conhecida; valores não informados ficam como “a confirmar”.
+- Contratos recorrentes com valor mensal estimado entram na projeção sem criar lançamentos falsos no Firestore.
+- Backup JSON atualizado para schemaVersion 0.6.
+
+## Importante: não há alteração nas regras do Firestore
+
+A v0.6 usa somente os dados que a v0.5 já estava autorizada a ler. Portanto:
+
+**não é necessário publicar novas regras no Firebase nesta versão.**
+
+O arquivo `firestore.rules` permanece no ZIP apenas como referência e é idêntico ao da v0.5.
 
 ## Atualização
 
-### 1. Publique PRIMEIRO as novas regras
+1. Faça um backup JSON pela v0.5 antes da atualização.
+2. Substitua no GitHub todos os arquivos da v0.5 pelos arquivos da v0.6.
+3. Aguarde o GitHub Pages concluir a publicação.
+4. Faça `Ctrl + F5` no computador.
+5. No PWA do celular, feche completamente e abra novamente.
 
-Firebase → Firestore Database → Regras
-
-Cole integralmente o arquivo `firestore.rules` desta versão e clique em **Publicar**.
-
-### 2. Atualize o GitHub Pages
-
-Substitua os arquivos pelos da v0.5.
-
-O Service Worker foi alterado para `v05`.
-
-Depois use `Ctrl + F5`. No celular, feche a PWA completamente e abra novamente.
+O cache do Service Worker mudou de `v05` para `v06`.
 
 ## Teste recomendado
 
-Use um valor pequeno de teste para não interferir nos dados reais.
+Use um contrato parcelado já existente ou crie um de teste com vencimentos próximos.
 
-1. Crie uma despesa de R$ 1,00.
-2. Abra **Gastos / Movimentações**.
-3. Toque na despesa.
-4. Informe como motivo: `Teste de estorno da v0.5`.
-5. Toque em **Estornar lançamento**.
+Valide:
 
-Resultado esperado:
+- Agenda Financeira aparece no dashboard.
+- “30 dias” soma apenas os saldos ainda não pagos.
+- Parcela vencida aparece em vermelho.
+- Ao tocar em um dia do calendário, os compromissos daquele dia aparecem abaixo.
+- Ao tocar em um compromisso, a tela de pagamento abre com contrato/parcela selecionados.
+- Após registrar o pagamento e reabrir o calendário, a parcela quitada desaparece da agenda.
+- A projeção de 12 meses se reorganiza automaticamente.
 
-- a despesa continua aparecendo no histórico como **ESTORNADO**;
-- o valor deixa de compor o capital empregado;
-- o valor deixa de compor o custo adicional, se estava marcado para compor;
-- aparece quem realizou o estorno e o motivo;
-- a outra conta também visualiza o lançamento estornado.
+## Limite intencional da projeção
 
-### Teste de reserva
+A aplicação não inventa juros futuros, tarifas ou valores ainda desconhecidos. Quando um financiamento não possui prestação estimada conhecida, o compromisso continua visível, mas o valor aparece como `A confirmar`.
 
-Se um gasto pago com uma reserva for estornado, o dinheiro deve retornar para o saldo disponível da reserva.
-
-Se tentar estornar um aporte em reserva cujo dinheiro já foi usado, o aplicativo bloqueia e orienta a estornar primeiro o gasto/pagamento vinculado.
-
-## Backup
-
-Acesse:
-
-**Mais → Backup e exportação**
-
-Há duas opções:
-
-- **JSON:** cópia completa do projeto e estrutura financeira para segurança/recuperação futura.
-- **CSV:** extrato de movimentações para abrir no Excel, incluindo lançamentos ativos e estornados.
-
-## Estratégia adotada para correções
-
-Nesta versão não existe edição silenciosa de valores financeiros já registrados.
-
-A correção segura é:
-
-1. estornar o lançamento incorreto;
-2. manter o registro original para rastreabilidade;
-3. cadastrar um novo lançamento com o valor correto.
-
-Isso reduz o risco de perda de histórico e inconsistência nos totais.
-
-## Próxima versão sugerida
-
-v0.6 — calendário financeiro e previsões:
-
-- calendário mensal;
-- vencimentos por dia;
-- próximos 7/30/60/90 dias;
-- visão de fluxo de caixa futuro;
-- alertas visuais de parcelas próximas e vencidas;
-- preparação para notificações locais da PWA.
+Contratos recorrentes são projeções gerenciais; eles não criam parcelas no banco. Quando um pagamento desse contrato é registrado em determinado mês, a estimativa daquele mês deixa de aparecer no calendário.

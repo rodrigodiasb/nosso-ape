@@ -38,6 +38,9 @@ let toastTimer;
 let preselectedContractId = null;
 let preselectedInstallmentId = null;
 let selectedMovement = null;
+let calendarCursor = null;
+let selectedCalendarDate = null;
+let agendaFilter = "30";
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const compactBrl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -230,7 +233,7 @@ function renderProject() {
   $("#financialProgressTrack").setAttribute('aria-valuenow',progress.toFixed(1));
   $("#financialProgressPaid").textContent=`${currency(summary.employedCapital)} empregados`;
   $("#financialProgressTotal").textContent=`de ${currency(summary.realCost)}`;
-  renderContributions(summary); renderDashboardContracts(); renderNextPayment();
+  renderContributions(summary); renderDashboardContracts(); renderNextPayment(); renderDashboardAgenda();
 }
 
 async function refreshFinancial() {
@@ -553,7 +556,7 @@ function backupDateStamp() { return todayISO().replaceAll('-',''); }
 
 function exportJsonBackup() {
   const payload={
-    schemaVersion:'0.5',
+    schemaVersion:'0.6',
     generatedAt:new Date().toISOString(),
     project:currentProject,
     members:currentMembers,
@@ -575,6 +578,200 @@ function exportCsvMovements() {
   showToast('CSV de movimentações gerado.','success');
 }
 
+
+
+function parseISO(value) {
+  if(!value) return null;
+  const [y,m,d]=value.split('-').map(Number);
+  if(!y||!m||!d) return null;
+  return new Date(y,m-1,d,12,0,0,0);
+}
+function isoFromDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+function monthKeyFromDate(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
+function monthKeyFromISO(value){ return value?.slice(0,7)||''; }
+function addDaysToISO(value,days){ const d=parseISO(value); d.setDate(d.getDate()+days); return isoFromDate(d); }
+function addMonthsStable(value,months){
+  const d=parseISO(value); if(!d) return null;
+  const day=d.getDate(); const target=new Date(d.getFullYear(),d.getMonth()+months,1,12);
+  const last=new Date(target.getFullYear(),target.getMonth()+1,0,12).getDate();
+  target.setDate(Math.min(day,last)); return isoFromDate(target);
+}
+function daysBetweenISO(from,to){
+  const a=parseISO(from), b=parseISO(to); if(!a||!b) return null;
+  return Math.round((b-a)/86400000);
+}
+function monthNameLong(date){
+  return date.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
+}
+function shortMonth(date){ return date.toLocaleDateString('pt-BR',{month:'short'}).replace('.',''); }
+function obligationAmount(item){ return Number(item.amount||0); }
+function formatObligationTotal(items){
+  const known=items.reduce((s,item)=>s+(item.unknownAmount?0:obligationAmount(item)),0);
+  const unknown=items.filter(item=>item.unknownAmount).length;
+  return {known,unknown,text:`${currency(known)}${unknown?` + ${unknown} a confirmar`:''}`};
+}
+function obligationStatus(item){
+  const today=todayISO();
+  if(item.dueDate<today) return 'overdue';
+  if(item.dueDate===today) return 'today';
+  return 'future';
+}
+function knownObligations(horizonMonths=24){
+  const items=[];
+  const today=todayISO();
+  const horizon=addMonthsStable(today,horizonMonths);
+
+  financial.contracts.filter(c=>['installment','financing'].includes(c.type)).forEach(contract=>{
+    (financial.installmentsByContract[contract.id]||[]).filter(i=>i.status!=='paid').forEach(i=>{
+      if(!i.dueDate) return;
+      let amount=0, unknownAmount=false;
+      if(contract.type==='financing'){
+        const expected=Number(i.expectedValue||contract.estimatedInstallmentValue||0);
+        const already=Number(i.paidValue||0);
+        amount=Math.max(0,expected-already);
+        unknownAmount=expected<=0;
+      } else {
+        amount=Math.max(0,Number(i.expectedValue||0)-Number(i.paidValue||0));
+      }
+      items.push({
+        id:`${contract.id}|${i.id}`,
+        contractId:contract.id,
+        installmentId:i.id,
+        contractType:contract.type,
+        label:contract.name,
+        category:contract.category||'Outros',
+        number:i.number,
+        installmentsCount:contract.installmentsCount,
+        dueDate:i.dueDate,
+        amount,
+        unknownAmount,
+        estimated:false,
+        status:obligationStatus({dueDate:i.dueDate})
+      });
+    });
+  });
+
+  // Recorrentes não geram parcelas no banco. Para o planejamento, criamos apenas
+  // uma projeção visual a partir do mês atual quando existe valor estimado.
+  financial.contracts.filter(c=>c.type==='recurring'&&Number(c.estimatedMonthlyValue||0)>0).forEach(contract=>{
+    const start=contract.startDate||today;
+    const startMonth=monthKeyFromISO(start);
+    const currentMonth=monthKeyFromISO(today);
+    const base=startMonth>currentMonth?start:today.slice(0,8)+String(Math.min(parseISO(start)?.getDate()||1,new Date(parseISO(today).getFullYear(),parseISO(today).getMonth()+1,0).getDate())).padStart(2,'0');
+    const alreadyPaidMonths=new Set(activePayments().filter(p=>p.contractId===contract.id&&p.paymentDate).map(p=>p.paymentDate.slice(0,7)));
+    for(let n=0;n<=horizonMonths;n++){
+      let due=addMonthsStable(base,n); if(!due) continue;
+      if(due<start) continue;
+      if(due>horizon) break;
+      if(alreadyPaidMonths.has(due.slice(0,7))) continue;
+      items.push({
+        id:`recurring:${contract.id}:${due}`,
+        contractId:contract.id,
+        installmentId:null,
+        contractType:'recurring',
+        label:contract.name,
+        category:contract.category||'Outros',
+        number:null,
+        installmentsCount:null,
+        dueDate:due,
+        amount:Number(contract.estimatedMonthlyValue||0),
+        unknownAmount:false,
+        estimated:true,
+        status:obligationStatus({dueDate:due})
+      });
+    }
+  });
+
+  return items.sort((a,b)=>a.dueDate.localeCompare(b.dueDate)||a.label.localeCompare(b.label));
+}
+function obligationsForWindow(obligations,days){
+  const today=todayISO(); const end=addDaysToISO(today,days);
+  return obligations.filter(item=>item.dueDate>=today&&item.dueDate<=end);
+}
+function renderDashboardAgenda(){
+  const obligations=knownObligations(24); const overdue=obligations.filter(o=>o.dueDate<todayISO()); const next30=obligationsForWindow(obligations,30);
+  const ov=formatObligationTotal(overdue), n30=formatObligationTotal(next30);
+  $('#dashboardOverdueValue').textContent=ov.known>0?currency(ov.known):(ov.unknown?'A confirmar':currency(0));
+  $('#dashboardOverdueCount').textContent=`${overdue.length} ${overdue.length===1?'compromisso':'compromissos'}${ov.unknown?` • ${ov.unknown} sem valor`:''}`;
+  $('#dashboardNext30Value').textContent=n30.known>0?currency(n30.known):(n30.unknown?'A confirmar':currency(0));
+  $('#dashboardNext30Count').textContent=`${next30.length} ${next30.length===1?'compromisso':'compromissos'}${n30.unknown?` • ${n30.unknown} sem valor`:''}`;
+  $('#agendaDashboardCard')?.classList.toggle('has-overdue',overdue.length>0);
+}
+function agendaFilterItems(obligations,filter){
+  if(filter==='overdue') return obligations.filter(o=>o.dueDate<todayISO());
+  return obligationsForWindow(obligations,Number(filter)||30);
+}
+function renderCalendarSummary(obligations){
+  const groups=[
+    ['Vencidos',obligations.filter(o=>o.dueDate<todayISO()),'danger'],
+    ['7 dias',obligationsForWindow(obligations,7),'green'],
+    ['30 dias',obligationsForWindow(obligations,30),'blue'],
+    ['90 dias',obligationsForWindow(obligations,90),'purple']
+  ];
+  $('#calendarSummaryGrid').innerHTML=groups.map(([label,items,tone])=>{
+    const t=formatObligationTotal(items);
+    return `<div class="calendar-summary-card ${tone}"><span>${label}</span><strong>${t.known?compactCurrency(t.known):(t.unknown?'A confirmar':currency(0))}</strong><small>${items.length} ${items.length===1?'compromisso':'compromissos'}${t.unknown?` • ${t.unknown} sem valor`:''}</small></div>`;
+  }).join('');
+}
+function obligationRowHtml(item,compact=false){
+  const status=obligationStatus(item); const statusLabel=status==='overdue'?'Vencido':status==='today'?'Hoje':item.estimated?'Estimado':'Previsto';
+  const number=item.number?` • ${String(item.number).padStart(2,'0')}/${item.installmentsCount}`:'';
+  const amount=item.unknownAmount?'A confirmar':currency(item.amount);
+  return `<button class="agenda-obligation-row ${status}" data-calendar-pay="${item.contractId}|${item.installmentId||''}" type="button"><span class="agenda-date-badge"><b>${parseISO(item.dueDate).getDate()}</b><small>${shortMonth(parseISO(item.dueDate))}</small></span><span class="agenda-obligation-copy"><strong>${escapeHtml(item.label)}${number}</strong><small>${escapeHtml(item.category)} • ${statusLabel}${item.estimated?' • projeção':''}</small></span><b>${amount}</b></button>`;
+}
+function renderAgendaPeriodList(obligations){
+  const list=agendaFilterItems(obligations,agendaFilter); const target=$('#agendaPeriodList');
+  $$('.agenda-filter').forEach(b=>b.classList.toggle('active',b.dataset.agendaFilter===agendaFilter));
+  if(!list.length){target.innerHTML='<div class="calendar-empty">Nenhum compromisso neste período.</div>';return;}
+  const shown=list.slice(0,12);
+  target.innerHTML=shown.map(item=>obligationRowHtml(item,true)).join('')+(list.length>shown.length?`<div class="agenda-more">+ ${list.length-shown.length} compromissos além dos exibidos</div>`:'');
+}
+function renderMonthGrid(obligations){
+  if(!calendarCursor){ const t=parseISO(todayISO()); calendarCursor=new Date(t.getFullYear(),t.getMonth(),1,12); }
+  const year=calendarCursor.getFullYear(), month=calendarCursor.getMonth();
+  $('#calendarMonthTitle').textContent=monthNameLong(calendarCursor);
+  const first=new Date(year,month,1,12); const gridStart=new Date(year,month,1-first.getDay(),12);
+  const byDate=Object.groupBy ? Object.groupBy(obligations,o=>o.dueDate) : obligations.reduce((acc,o)=>((acc[o.dueDate]??=[]).push(o),acc),{});
+  const cells=[];
+  for(let i=0;i<42;i++){
+    const d=new Date(gridStart); d.setDate(gridStart.getDate()+i); const iso=isoFromDate(d); const dayItems=byDate[iso]||[]; const totals=formatObligationTotal(dayItems);
+    const outside=d.getMonth()!==month; const today=iso===todayISO(); const selected=iso===selectedCalendarDate; const overdue=dayItems.some(x=>x.dueDate<todayISO());
+    const amountLabel=totals.known>0?compactCurrency(totals.known):(totals.unknown?'?':'');
+    cells.push(`<button class="calendar-day ${outside?'outside':''} ${today?'today':''} ${selected?'selected':''} ${dayItems.length?'has-items':''} ${overdue?'has-overdue':''}" data-calendar-date="${iso}" type="button"><span class="day-number">${d.getDate()}</span>${dayItems.length?`<span class="day-dot"></span><small>${amountLabel}</small>`:''}</button>`);
+  }
+  $('#calendarGrid').innerHTML=cells.join('');
+}
+function renderSelectedDay(obligations){
+  const selected=selectedCalendarDate||todayISO(); const d=parseISO(selected); const items=obligations.filter(o=>o.dueDate===selected); const total=formatObligationTotal(items);
+  $('#selectedDayTitle').textContent=d.toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
+  $('#selectedDayTotal').textContent=items.length?total.text:'Sem compromissos';
+  $('#selectedDayList').innerHTML=items.length?items.map(item=>obligationRowHtml(item)).join(''):'<div class="calendar-empty">Nenhum vencimento ou estimativa para este dia.</div>';
+}
+function cashflowMonths(obligations,count=12){
+  const today=parseISO(todayISO()); const start=new Date(today.getFullYear(),today.getMonth(),1,12); const result=[];
+  for(let i=0;i<count;i++){
+    const d=new Date(start.getFullYear(),start.getMonth()+i,1,12); const key=monthKeyFromDate(d); const items=obligations.filter(o=>o.dueDate>=todayISO()&&monthKeyFromISO(o.dueDate)===key); const total=formatObligationTotal(items);
+    result.push({date:d,key,items,known:total.known,unknown:total.unknown});
+  }
+  return result;
+}
+function renderCashflow(obligations){
+  const months=cashflowMonths(obligations,12); const total=months.reduce((s,m)=>s+m.known,0); const unknown=months.reduce((s,m)=>s+m.unknown,0); const biggest=months.reduce((best,m)=>m.known>best.known?m:best,months[0]||{known:0,date:new Date()});
+  $('#cashflowHero').innerHTML=`<div><span>12 meses conhecidos</span><strong>${currency(total)}</strong><small>${unknown?`${unknown} compromisso${unknown===1?'':'s'} ainda sem valor conhecido`:'Todos os valores desta janela estão definidos'}</small></div><div><span>Mês de maior saída conhecida</span><strong>${biggest.known?monthNameLong(biggest.date):'—'}</strong><small>${biggest.known?currency(biggest.known):'Sem valores previstos'}</small></div>`;
+  const max=Math.max(...months.map(m=>m.known),1);
+  $('#cashflowBars').innerHTML=months.map(m=>`<button class="cashflow-month" data-calendar-month="${m.key}" type="button"><span class="cashflow-value">${m.known?compactCurrency(m.known):m.unknown?'?':'—'}</span><div class="cashflow-track"><i style="height:${m.known?Math.max(7,m.known/max*100):0}%"></i></div><strong>${shortMonth(m.date)}</strong><small>${m.items.length} item${m.items.length===1?'':'s'}${m.unknown?' • ?':''}</small></button>`).join('');
+}
+function renderCalendar(){
+  const obligations=knownObligations(24);
+  if(!selectedCalendarDate) selectedCalendarDate=todayISO();
+  if(!calendarCursor){ const t=parseISO(selectedCalendarDate); calendarCursor=new Date(t.getFullYear(),t.getMonth(),1,12); }
+  renderCalendarSummary(obligations); renderAgendaPeriodList(obligations); renderMonthGrid(obligations); renderSelectedDay(obligations); renderCashflow(obligations);
+}
+function openCalendar(){
+  const t=parseISO(todayISO()); calendarCursor=new Date(t.getFullYear(),t.getMonth(),1,12); selectedCalendarDate=todayISO(); agendaFilter='30'; renderCalendar(); openModal($('#calendarModal'));
+}
 
 function addToBucket(map,key,value){ if(!key) key='Outros'; map[key]=(map[key]||0)+(Number(value)||0); }
 function monthLabel(key){ const [y,m]=key.split('-'); const names=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return `${names[Number(m)-1]||m}/${String(y).slice(2)}`; }
@@ -690,6 +887,11 @@ $("#quickExpense").addEventListener('click',()=>{closeModal($("#quickAddModal"))
 $("#quickReserve").addEventListener('click',()=>{closeModal($("#quickAddModal"));openReserve();});
 $("#contractsNav").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
 $("#movementsNav").addEventListener('click',()=>{renderMovements();openModal($("#movementsModal"));});$("#reportsButton").addEventListener('click',()=>{renderReports();closeModal($("#moreModal"));openModal($("#reportsModal"));});
+$("#calendarButton").addEventListener('click',()=>{closeModal($("#moreModal"));openCalendar();});
+$("#openCalendarDashboard").addEventListener('click',openCalendar);
+$("#agendaDashboardCard").addEventListener('click',e=>{if(!e.target.closest('button'))openCalendar();});
+$("#calendarPrev").addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()-1,1,12);renderCalendar();});
+$("#calendarNext").addEventListener('click',()=>{calendarCursor=new Date(calendarCursor.getFullYear(),calendarCursor.getMonth()+1,1,12);renderCalendar();});
 $("#backupButton").addEventListener('click',()=>{closeModal($("#moreModal"));openModal($("#backupModal"));});
 $("#exportJsonButton").addEventListener('click',exportJsonBackup);
 $("#exportCsvButton").addEventListener('click',exportCsvMovements);$("#contributionHistoryButton").addEventListener('click',()=>{renderReports();openModal($("#reportsModal"));});$("#dashboardContractsButton").addEventListener('click',()=>{renderContractsList();openModal($("#contractsModal"));});
@@ -698,6 +900,10 @@ $("#createReserveFromReserveModal").addEventListener('click',()=>{closeModal($("
 $("#closeCelebration").addEventListener('click',()=>closeModal($("#celebrationModal")));
 
 document.addEventListener('click',e=>{
+  const agendaFilterButton=e.target.closest('[data-agenda-filter]'); if(agendaFilterButton){agendaFilter=agendaFilterButton.dataset.agendaFilter;renderAgendaPeriodList(knownObligations(24));return;}
+  const calendarDay=e.target.closest('[data-calendar-date]'); if(calendarDay){selectedCalendarDate=calendarDay.dataset.calendarDate;const d=parseISO(selectedCalendarDate);calendarCursor=new Date(d.getFullYear(),d.getMonth(),1,12);renderCalendar();return;}
+  const calendarMonth=e.target.closest('[data-calendar-month]'); if(calendarMonth){const [y,m]=calendarMonth.dataset.calendarMonth.split('-').map(Number);calendarCursor=new Date(y,m-1,1,12);selectedCalendarDate=`${y}-${String(m).padStart(2,'0')}-01`;renderCalendar();return;}
+  const calendarPay=e.target.closest('[data-calendar-pay]'); if(calendarPay){const [cid,iid]=calendarPay.dataset.calendarPay.split('|');closeModal($("#calendarModal"));openPaymentFor(cid,iid||null);return;}
   const movement=e.target.closest('[data-movement-detail]'); if(movement){const [kind,id]=movement.dataset.movementDetail.split('|');openMovementDetail(kind,id);return;}
   const reverseBtn=e.target.closest('#reverseMovementButton'); if(reverseBtn){reverseSelectedMovement();return;}
   const contract=e.target.closest('[data-contract-detail]'); if(contract){closeModal($("#contractsModal"));openContractDetail(contract.dataset.contractDetail);return;}
