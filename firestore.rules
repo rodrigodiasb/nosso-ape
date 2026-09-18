@@ -1,0 +1,11 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // V0.1 — banco deliberadamente bloqueado.
+    // As regras por projeto/membro serão adicionadas na próxima etapa.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

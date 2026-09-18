@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0f6f6a" />
+  <meta name="description" content="Nosso Apê — gestão visual dos gastos, contratos, parcelas e metas do imóvel." />
+  <title>Nosso Apê</title>
+
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- LOGIN -->
+  <section id="authView" class="auth-view">
+    <div class="auth-backdrop"></div>
+
+    <div class="auth-shell">
+      <div class="brand-panel">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 64 64">
+            <path d="M10 30 32 11l22 19v23H40V38H24v15H10Z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+            <path d="M25 25c3-4 10-4 13 0 3 4 1 9-6 14-7-5-9-10-7-14Z" fill="currentColor" opacity=".85"/>
+          </svg>
+        </div>
+
+        <div>
+          <p class="eyebrow light">NOSSO PROJETO</p>
+          <h1>Nosso Apê</h1>
+          <p class="brand-subtitle">Mais que números, o nosso futuro tomando forma.</p>
+        </div>
+
+        <div class="house-visual" aria-hidden="true">
+          <div class="tower tower-a"></div>
+          <div class="tower tower-b"></div>
+          <div class="tower tower-c"></div>
+          <div class="glow"></div>
+        </div>
+      </div>
+
+      <form id="loginForm" class="login-card" autocomplete="on">
+        <div class="login-card-title">
+          <span class="status-dot"></span>
+          <div>
+            <strong>Bem-vindos</strong>
+            <small>Acesso privado do casal</small>
+          </div>
+        </div>
+
+        <label class="field">
+          <span>E-mail</span>
+          <div class="field-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5A2.5 2.5 0 0 1 5.5 4h13A2.5 2.5 0 0 1 21 6.5v11A2.5 2.5 0 0 1 18.5 20h-13A2.5 2.5 0 0 1 3 17.5Z"/><path d="m4 7 8 6 8-6"/></svg>
+            <input id="email" type="email" placeholder="seu@email.com" required autocomplete="email" />
+          </div>
+        </label>
+
+        <label class="field">
+          <span>Senha</span>
+          <div class="field-box">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+            <input id="password" type="password" placeholder="Sua senha" required autocomplete="current-password" />
+            <button id="togglePassword" type="button" class="icon-button" aria-label="Mostrar ou ocultar senha">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+            </button>
+          </div>
+        </label>
+
+        <button id="forgotPassword" class="link-button" type="button">Esqueci minha senha</button>
+
+        <button id="loginButton" class="primary-button" type="submit">
+          <span>Entrar</span>
+          <span class="button-arrow">→</span>
+        </button>
+
+        <div class="privacy-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.2 7.5 9.5 4.4-1.3 7.5-4.9 7.5-9.5V6Z"/><path d="m9 12 2 2 4-4"/></svg>
+          <span>Sem cadastro público. Somente usuários autorizados no Firebase podem entrar.</span>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <section id="appView" class="app-view hidden">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">NOSSO APÊ</p>
+        <h2 id="welcomeText">Olá!</h2>
+        <p class="muted">Juntos construindo grandes planos</p>
+      </div>
+
+      <button id="profileButton" class="avatar-button" type="button" aria-label="Menu do perfil">
+        <span id="avatarInitial">A</span>
+        <span class="online-dot"></span>
+      </button>
+    </header>
+
+    <main class="dashboard">
+      <section class="property-card card">
+        <div class="property-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21H3Z"/><path d="M8 21v-6h8v6"/></svg>
+        </div>
+        <div class="property-copy">
+          <strong>Apartamento</strong>
+          <span>Projeto financeiro da aquisição</span>
+        </div>
+        <span class="chevron">›</span>
+      </section>
+
+      <div class="demo-pill">BASE VISUAL • DADOS DE DEMONSTRAÇÃO</div>
+
+      <section class="hero-finance">
+        <p>Custo real do projeto</p>
+        <strong>R$ 537.842,35</strong>
+        <span>Valor do imóvel + custos adicionais acumulados</span>
+
+        <div class="hero-shine"></div>
+        <div class="hero-grid"></div>
+      </section>
+
+      <section class="metrics-grid">
+        <article class="metric-card card">
+          <span>Valor do imóvel</span>
+          <strong>R$ 500 mil</strong>
+        </article>
+        <article class="metric-card card">
+          <span>Custos adicionais</span>
+          <strong>R$ 37.842</strong>
+        </article>
+        <article class="metric-card card">
+          <span>Capital empregado</span>
+          <strong>R$ 170.300</strong>
+        </article>
+      </section>
+
+      <section class="card progress-card">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">PROGRESSO FINANCEIRO</span>
+            <strong>Capital empregado</strong>
+          </div>
+          <span class="percentage-badge">31,7%</span>
+        </div>
+
+        <div class="progress-track" role="progressbar" aria-label="Progresso financeiro" aria-valuenow="31.7" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-fill" style="width:31.7%"></div>
+        </div>
+
+        <div class="progress-caption">
+          <span>R$ 170.300 empregados</span>
+          <span>de R$ 537.842</span>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">APORTES DO CASAL</span>
+            <strong>Participação financeira</strong>
+          </div>
+          <button class="ghost-button" data-coming-soon>Ver histórico</button>
+        </div>
+
+        <div class="contribution-grid">
+          <article class="person-card">
+            <div class="person-top">
+              <div class="mini-avatar blue">V</div>
+              <div>
+                <strong>Você</strong>
+                <span>R$ 92.500</span>
+              </div>
+              <b>54,3%</b>
+            </div>
+            <div class="mini-progress"><i style="width:54.3%"></i></div>
+          </article>
+
+          <article class="person-card">
+            <div class="person-top">
+              <div class="mini-avatar rose">P</div>
+              <div>
+                <strong>Parceira</strong>
+                <span>R$ 77.800</span>
+              </div>
+              <b>45,7%</b>
+            </div>
+            <div class="mini-progress rose-bar"><i style="width:45.7%"></i></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="card contracts-card">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">CONTRATOS</span>
+            <strong>Metas em andamento</strong>
+          </div>
+          <button class="ghost-button" data-coming-soon>Ver todos</button>
+        </div>
+
+        <article class="contract-row">
+          <div class="contract-icon green">
+            <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>
+          </div>
+          <div class="contract-body">
+            <div class="contract-title">
+              <strong>Entrada do apartamento</strong>
+              <span>18 / 23</span>
+            </div>
+            <div class="mini-progress"><i style="width:78%"></i></div>
+            <div class="contract-meta">
+              <span>R$ 72.000 pagos</span>
+              <span>78%</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="contract-row">
+          <div class="contract-icon blue">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M9 10h4.5a2 2 0 1 1 0 4H10"/></svg>
+          </div>
+          <div class="contract-body">
+            <div class="contract-title">
+              <strong>Móveis planejados</strong>
+              <span>Meta</span>
+            </div>
+            <div class="mini-progress blue-bar"><i style="width:50%"></i></div>
+            <div class="contract-meta">
+              <span>R$ 20.000 empregados</span>
+              <span>50%</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="card next-payment-card">
+        <div class="next-payment-icon">10</div>
+        <div>
+          <span class="section-kicker">PRÓXIMO PAGAMENTO</span>
+          <strong>Entrada • parcela 19/23</strong>
+          <small>10/10/2026</small>
+        </div>
+        <b>R$ 4.000</b>
+      </section>
+
+      <div class="bottom-safe-space"></div>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navegação principal">
+      <button class="nav-item active" type="button">
+        <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V21h-6v-6H9v6H3Z"/></svg>
+        <span>Início</span>
+      </button>
+
+      <button class="nav-item" type="button" data-coming-soon>
+        <svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6Z"/><path d="M9 11h6M9 15h6M9 7h3"/></svg>
+        <span>Contratos</span>
+      </button>
+
+      <button id="openQuickAdd" class="quick-add" type="button" aria-label="Adicionar lançamento">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+
+      <button class="nav-item" type="button" data-coming-soon>
+        <svg viewBox="0 0 24 24"><path d="M5 5h14v14H5Z"/><path d="M8 9h8M8 13h5"/></svg>
+        <span>Gastos</span>
+      </button>
+
+      <button id="moreButton" class="nav-item" type="button">
+        <svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h14"/></svg>
+        <span>Mais</span>
+      </button>
+    </nav>
+  </section>
+
+  <!-- QUICK ADD -->
+  <div id="quickAddModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="quickAddTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="quickAddTitle">O que deseja registrar?</h3>
+
+      <button class="action-option" data-coming-soon>
+        <span class="action-icon green">
+          <svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="3"/><path d="M8 9h8M8 13h5"/></svg>
+        </span>
+        <span><strong>Pagamento</strong><small>Baixa de parcela ou despesa</small></span>
+        <b>›</b>
+      </button>
+
+      <button class="action-option" data-coming-soon>
+        <span class="action-icon coral">
+          <svg viewBox="0 0 24 24"><path d="M6 3h12v18H6Z"/><path d="M9 8h6M9 12h6"/></svg>
+        </span>
+        <span><strong>Despesa</strong><small>Novo gasto avulso</small></span>
+        <b>›</b>
+      </button>
+
+      <button class="action-option" data-coming-soon>
+        <span class="action-icon blue">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7v10M8.5 10h5a2 2 0 1 1 0 4h-3"/></svg>
+        </span>
+        <span><strong>Reserva / aporte</strong><small>Guardar para um objetivo</small></span>
+        <b>›</b>
+      </button>
+
+      <button class="action-option" data-coming-soon>
+        <span class="action-icon purple">
+          <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5Z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>
+        </span>
+        <span><strong>Novo contrato</strong><small>Entrada, financiamento, móveis...</small></span>
+        <b>›</b>
+      </button>
+    </div>
+  </div>
+
+  <!-- PROFILE / MORE -->
+  <div id="moreModal" class="modal-layer hidden" role="dialog" aria-modal="true" aria-labelledby="moreTitle">
+    <button class="modal-backdrop" data-close-modal aria-label="Fechar"></button>
+    <div class="action-sheet compact-sheet">
+      <div class="sheet-handle"></div>
+      <h3 id="moreTitle">Mais</h3>
+      <button class="simple-option" data-coming-soon>Projeto / imóvel <span>›</span></button>
+      <button class="simple-option" data-coming-soon>Relatórios <span>›</span></button>
+      <button class="simple-option" data-coming-soon>Configurações <span>›</span></button>
+      <button id="logoutButton" class="simple-option danger">Sair <span>→</span></button>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
