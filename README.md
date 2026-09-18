@@ -1,6 +1,6 @@
-# Nosso Apê — v0.6.1
+# Nosso Apê — v0.6.2
 
-Patch de segurança para limpar os dados de teste sem apagar o projeto do imóvel.
+Correção da v0.6.1: o botão visual de reset financeiro agora aparece corretamente para a conta proprietária do projeto.
 
 ## O que o reset preserva
 
@@ -72,3 +72,26 @@ Depois do reset, o dashboard deve manter o valor do imóvel e retornar a zero em
 ## Observação
 
 A conta da segunda pessoa continua normalmente vinculada ao mesmo projeto após o reset.
+
+
+## Correção específica da v0.6.2
+
+Na v0.6.1 a função de reset, o modal de confirmação e as regras de exclusão estavam presentes, porém o bloco visual `financialResetZone` não havia sido inserido na tela **Projeto / imóvel**.
+
+A v0.6.2 corrige esse ponto.
+
+### Onde o botão aparece
+
+Entre com a conta que originalmente criou o projeto e acesse:
+
+**Mais → Projeto / imóvel**
+
+Role até o final da tela. Após a área de convite aparecerá:
+
+**ÁREA DE SEGURANÇA → Resetar dados financeiros**
+
+A função permanece invisível para a segunda conta.
+
+### Cache
+
+O Service Worker foi atualizado para `v062`.

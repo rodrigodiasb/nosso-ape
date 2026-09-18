@@ -1,4 +1,4 @@
-const CACHE_NAME = "nosso-ape-shell-v061";
+const CACHE_NAME = "nosso-ape-shell-v062";
 
 const APP_SHELL = [
   "./",
